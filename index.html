@@ -185,6 +185,7 @@ function populateAndRender(){
   $("#tp").innerHTML=`<option value="">Selecione o template usado</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");updateContactTabs();render();
 }
+const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"],["semretorno","Sem retorno"],["semcontato","Sem formas de contato"],["debito","Deixou débitos"]];
 let activeStatus="";
 const stOf=o=>(S[o.k]||{}).s||"novo";
 const tplOf=o=>{const v=$("#tp").value;return T[v===""?0:+v]};
