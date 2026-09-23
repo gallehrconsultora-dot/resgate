@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Resgate de ex-clientes · Vem Pra Uno</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js">
+function copyClientName(btn){const i=Number(btn.dataset.i);const o=view[i];if(!o)return;const done=()=>{const old=btn.innerHTML;btn.innerHTML="✓ Nome copiado";setTimeout(()=>btn.innerHTML=old,1400)};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(o.nome).then(done).catch(()=>fallbackCopy(o.nome,done))}else fallbackCopy(o.nome,done)}
+function fallbackCopy(text,done){const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();done()}
+</script>
 <style>
 :root{--bg:#f2f4f6;--cd:#fff;--tx:#14202b;--mu:#64717d;--br:#dde3e8;--ac:#ff6a13;--wa:#178a4c;--wr:#a86500;--ig:#7b8794}
 @media(prefers-color-scheme:dark){:root{--bg:#10171d;--cd:#19232b;--tx:#e9eef2;--mu:#93a1ad;--br:#2b3843;--wa:#3fbf7a;--wr:#e0a23a}}
@@ -25,6 +28,15 @@ td{padding:9px 8px;border-bottom:1px solid var(--br);vertical-align:top}td small
 a.wa{background:var(--wa);white-space:nowrap}a.wa.off{background:var(--ig);pointer-events:none;opacity:.5}
 td select{padding:5px;width:auto}.hid{display:none}
 details summary{cursor:pointer;font-weight:600}
+
+/* Tema escuro fixo */
+:root{--bg:#0d1318;--cd:#171f26;--tx:#edf2f5;--mu:#9aa8b3;--br:#2a3640;--ac:#ff7a22;--wa:#3fc47d;--wr:#e4a83a;--ig:#84929d}
+body{background:var(--bg);color:var(--tx)}
+.box,.chip,table{background:var(--cd)}
+input,select{background:#111a21!important;color:var(--tx)!important;border-color:var(--br)!important}
+#drop{background:#121a21}
+#drop:hover,#drop.on{background:#18232c}
+tr:hover{background:#1b2730!important}
 </style><style>
 /* Redesign 2026 */
 :root{--bg:#f6f7f9;--cd:#fff;--tx:#17212b;--mu:#71808d;--br:#e7ebef;--ac:#ff6b18;--wa:#15945a;--wr:#b87900;--ig:#87939d;--shadow:0 8px 28px rgba(23,33,43,.07)}
