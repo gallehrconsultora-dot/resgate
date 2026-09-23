@@ -224,23 +224,22 @@ function filt(){
   return r;
 }
 async function mark(o,s,t){
-  const p=S[o.k]||{};
+  const previous={...(S[o.k]||{s:"novo"})};
   const now=new Date().toISOString();
-  S[o.k]={s,t:t||p.t||"",d:now.slice(0,10)};save();
-  if(!window.sb)return true;
+  S[o.k]={s,t:t||previous.t||"",d:now.slice(0,10)};save();
+  render();stats();
+  if(!window.sb||!o.dbid)return true;
   try{
-    const payload={status_recuperacao:s,ultimo_contato_at:now,modelo_abordagem:t||p.t||"",atualizado_em:now};
-    // A chave é o identificador estável do relatório; usamos ela para não depender do UUID carregado na tabela.
-    const {error}=await sb.from("clientes").update(payload).eq("chave",o.k);
+    const payload={status_recuperacao:s,ultimo_contato_at:now,modelo_abordagem:t||previous.t||"",atualizado_em:now};
+    const {error}=await sb.from("clientes").update(payload).eq("id",o.dbid);
     if(error)throw error;
-    const {data:check,error:checkError}=await sb.from("clientes").select("status_recuperacao").eq("chave",o.k).maybeSingle();
-    if(checkError)throw checkError;
-    if(!check||check.status_recuperacao!==s)throw new Error("O banco não confirmou o novo status");
+    const {data,error:readError}=await sb.from("clientes").select("id,status_recuperacao").eq("id",o.dbid).single();
+    if(readError)throw readError;
+    if(data.status_recuperacao!==s)throw new Error("Confirmação do banco divergente");
     return true;
   }catch(error){
-    console.error("Erro ao salvar status:",error);
-    S[o.k]=p;save();render();
-    const msg=$id("loginMsg");if(msg)msg.textContent="Não foi possível salvar o status. Tente novamente.";
+    console.error("Falha ao persistir status:",error);
+    S[o.k]=previous;save();render();stats();
     return false;
   }
 }
@@ -289,19 +288,10 @@ $("#rows").addEventListener("click",e=>{
   const o=view[+b.dataset.i];if(!o)return;
   copyClientName(b);
 });
-$("#rows").addEventListener("change",async e=>{
+$("#rows").addEventListener("change",e=>{
   if(e.target.tagName!=="SELECT")return;
   const o=view[+e.target.dataset.i];if(!o)return;
-  const next=e.target.value;
-  const prev=S[o.k]||{s:"novo",t:tplOf(o)[0]};
-  S[o.k]={s:next,t:prev.t||tplOf(o)[0],d:new Date().toISOString().slice(0,10)};
-  save();
-  render();
-  stats();
-  const ok=await mark(o,next,prev.t||tplOf(o)[0]);
-  if(!ok){
-    S[o.k]=prev;save();render();stats();
-  }
+  mark(o,e.target.value,(S[o.k]||{}).t||tplOf(o)[0]);
 });
 ["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
   const el=$("#"+id);if(el)el.addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()});
