@@ -63,9 +63,25 @@ details.box{margin-top:14px}
 #cnt b{color:var(--tx);font-size:16px}
 @media(max-width:850px){.f{grid-template-columns:repeat(2,minmax(0,1fr))}.chips{display:grid;grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){main{padding:14px 10px 50px}.f{grid-template-columns:1fr}.chips{grid-template-columns:1fr 1fr}.chip{padding:11px}.chip strong{font-size:21px}td:nth-child(3){display:none}}
-</style></head><body><main>
+</style></head><body><style>
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0d1318}
+.login-card{width:min(420px,100%);background:#171f26;border:1px solid #2a3640;border-radius:18px;padding:28px;box-shadow:0 20px 60px #0006}
+.login-card h1{margin:0 0 6px;color:#edf2f5}.login-card p{color:#9aa8b3;margin:0 0 22px}.login-card label{display:block;color:#cbd5dc;font-size:12px;font-weight:700;margin:12px 0 6px}.login-card input{width:100%;padding:11px;border:1px solid #2a3640;border-radius:9px;background:#111a21;color:#edf2f5}.login-card button{width:100%;margin-top:16px;padding:11px;border:0;border-radius:9px;background:#ff7a22;color:#fff;font-weight:750;cursor:pointer}.login-card #loginMsg{min-height:20px;color:#ffb38a;font-size:12px;margin-top:12px}
+</style>
+<div id="login">
+  <div class="login-card">
+    <h1>🧡 Resgate</h1>
+    <p>Acesso restrito aos dados de recuperação de clientes.</p>
+    <form id="loginForm">
+      <label>E-mail</label><input id="email" type="email" autocomplete="username" required>
+      <label>Senha</label><input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Entrar</button>
+      <div id="loginMsg"></div>
+    </form>
+  </div>
+</div><main id="site">
 <h1>🧡 Resgate de ex-clientes</h1>
-<p class="s">Encontre, aborde e acompanhe ex-clientes em poucos cliques. Os dados ficam somente neste navegador.</p>
+<p class="s">Encontre, aborde e acompanhe ex-clientes em poucos cliques. Os dados ficam protegidos no Supabase.</p>
 <div class="box" id="drop" tabindex="0"><b>Solte o relatório CSV aqui ou clique para escolher</b><span>Formato do IXC, separado por ponto e vírgula</span><input type="file" id="file" accept=".csv,text/csv" class="hid"></div>
 <div id="app" class="hid">
 <div class="chips" id="chips"></div>
@@ -115,72 +131,36 @@ let D=[],view=[],shown=PAGE,S={};
 try{S=JSON.parse(localStorage.getItem("uno-status")||"{}")}catch(e){}
 const save=()=>{try{localStorage.setItem("uno-status",JSON.stringify(S))}catch(e){}};
 
-function build(rows){
+async function build(rows){
   const m=new Map();
   for(const r of rows){
     const nome=(r.Cliente||"").trim();if(!nome)continue;
-    const k=norm(nome).replace(/\s+/g," "),obs=(r["Obs. cancelamento"]||"").trim(),[g,l]=cls(obs);
-    const o={k,nome,id:(r.ID||"").replace(/[^0-9]/g,""),c:pdt(r["Data cancelamento"]),a:pdt(r["Data ativação"]),obs,g,l,cep:r.CEP||"",cid:r.Cidade||"",comp:r.Complemento||"",tel:phone(r),n:1};
+    const id=(r.ID||"").replace(/[^0-9]/g,"");
+    const k=id?"ixc:"+id:"nome:"+norm(nome).replace(/\s+/g," ");
+    const obs=(r["Obs. cancelamento"]||"").trim(),[g,l]=cls(obs);
+    const o={k,nome,id,c:pdt(r["Data cancelamento"]),a:pdt(r["Data ativação"]),obs,g,l,cep:r.CEP||"",cid:r.Cidade||"",comp:r.Complemento||"",tel:phone(r),n:1};
     const p=m.get(k);
-    if(!p)m.set(k,o);
-    else if(!p.c||(o.c&&o.c>=p.c)){o.n=p.n+1;o.tel=o.tel||p.tel;m.set(k,o)}
-    else{p.n++;p.tel=p.tel||o.tel}
+    if(!p)m.set(k,o); else if(!p.c||(o.c&&o.c>=p.c)){o.n=p.n+1;o.tel=o.tel||p.tel;m.set(k,o)} else {p.n++;p.tel=p.tel||o.tel}
   }
   D=[...m.values()];
-  D.forEach(o=>{o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null});
+  D.forEach(o=>o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null);
+  if(window.sb && D.length){
+    const payload=D.map(o=>({chave:o.k,cliente:o.nome,id_ixc:o.id||null,telefone:o.tel||null,cidade:o.cid||null,cep:o.cep||null,complemento:o.comp||null,data_ativacao:o.a?o.a.toISOString().slice(0,10):null,data_cancelamento:o.c?o.c.toISOString().slice(0,10):null,motivo:o.l,observacao_cancelamento:o.obs||null,classificacao:o.g}));
+    const {error}=await sb.from("clientes").upsert(payload,{onConflict:"chave"});
+    if(error){console.error(error);$("#loginMsg").textContent="Não foi possível salvar o relatório no banco.";return}
+  }
+  populateAndRender();
+}
+function populateAndRender(){
+  D.forEach(o=>o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null);
   const cnt=g=>D.filter(o=>o.g===g).length;
   $("#chips").innerHTML=[["Clientes no relatório",D.length],["Pode contatar",cnt("ok")],["Saiu com pendência",cnt("pend")],["Provável cliente ativo",cnt("ign")]].map(([a,b])=>`<div class="chip"><strong>${b.toLocaleString("pt-BR")}</strong><small>${a}</small></div>`).join("");
   const opt=(a,f)=>a.map(f).join("");
   const labs=[...new Set(D.map(o=>o.l))].sort();
   $("#cat").innerHTML=`<option value="">Todos que posso contatar</option>`+opt(labs,l=>`<option>${esc(l)}</option>`);
-  $("#cid").innerHTML=`<option value="">Todas</option>`+opt([...new Set(D.map(o=>o.cid))].sort(),c=>`<option>${esc(c)}</option>`);
+  $("#cid").innerHTML=`<option value="">Todas</option>`+opt([...new Set(D.map(o=>o.cid))].sort(),x=>`<option>${esc(x)}</option>`);
   $("#st").innerHTML=`<option value="">Todas</option>`+opt(ST,([v,l])=>`<option value="${v}">${l}</option>`);
   $("#tp").innerHTML=`<option value="ab">Alternar entre as 6 (teste A/B)</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");render();
 }
-const stOf=o=>(S[o.k]||{}).s||"novo";
-const tplOf=o=>{const v=$("#tp").value;return T[v==="ab"?hash(o.k)%T.length:+v]};
-function filt(){
-  const q=norm($("#q").value),qd=q.replace(/\D/g,""),cat=$("#cat").value,cid=$("#cid").value,st=$("#st").value,[a,b]=($("#jan").value||"").split("-").map(Number);
-  const pe=$("#pe").checked,wz=$("#wz").checked;
-  let r=D.filter(o=>{
-    if(cat?o.l!==cat:!(o.g==="ok"||(pe&&o.g==="pend")))return false;
-    if(cid&&o.cid!==cid||st&&stOf(o)!==st||wz&&!o.tel)return false;
-    if(q&&!(norm(o.nome).includes(q)||(qd&&(o.tel.includes(qd)||o.cep.replace(/\D/g,"").includes(qd)))))return false;
-    if($("#jan").value){const x=mAgo(o.c);if(x===null||x<a||x>=b)return false}
-    return true});
-  const z=$("#ord").value,cv=o=>o.c?+o.c:0;
-  r.sort(z==="ant"?(x,y)=>(cv(x)||9e15)-(cv(y)||9e15):z==="ten"?(x,y)=>(y.ten||0)-(x.ten||0):z==="nom"?(x,y)=>x.nome.localeCompare(y.nome,"pt-BR"):(x,y)=>cv(y)-cv(x));
-  return r}
-function render(){
-  view=filt();
-  $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
-  $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
-    const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
-    const t=tplOf(o),msg=t[1].replace("{n}",first(o.nome));
-    return `<tr><td><b>${esc(o.nome)}</b><small>Contrato ${o.id}${o.n>1?` · ${o.n} contratos`:""}${o.ten!==null?` · ficou ${o.ten} meses`:""}</small><small>${esc(o.cid)} · CEP ${esc(o.cep)}${o.comp?" · "+esc(o.comp):""}</small></td>
-<td>${fd(o.c)}<small>${ago}</small></td>
-<td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc(o.obs.split("\n")[0].slice(0,80))}</small></td>
-<td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
-<td>${o.tel?`<a class="b wa" data-i="${i}" target="_blank" rel="noopener" href="https://wa.me/55${o.tel}?text=${encodeURIComponent(msg)}">${fmt(o.tel)}</a><small>Modelo: ${t[0]}</small>`:`<a class="b wa off">Sem WhatsApp</a>`}</td></tr>`}).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Tente ampliar a época ou o motivo.</td></tr>`;
-  $("#more").classList.toggle("hid",view.length<=shown);
-  stats()}
-function stats(){
-  const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>v.s==="respondeu"||v.s==="voltou").length,b=e.filter(v=>v.s==="voltou").length;
-    return `<tr><td>${t[0]}</td><td>${e.length}</td><td>${r}</td><td>${e.length?Math.round(100*r/e.length)+"%":"–"}</td><td>${b}</td></tr>`}).join("");
-  $("#stats").innerHTML=`<div class="tw"><table><thead><tr><th>Mensagem</th><th>Contatados</th><th>Responderam</th><th>Taxa de resposta</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s">O registro fica salvo neste navegador. Ao clicar no WhatsApp de um cliente "Novo", ele passa para "Contatado" com o modelo usado.</p>`}
-function mark(o,s,t){const p=S[o.k]||{};S[o.k]={s,t:t||p.t||"",d:new Date().toISOString().slice(0,10)};save()}
-$("#rows").addEventListener("click",e=>{const a=e.target.closest("a.wa");if(!a||a.classList.contains("off"))return;const o=view[+a.dataset.i];if(stOf(o)==="novo"){mark(o,"contatado",tplOf(o)[0]);setTimeout(render,300)}});
-$("#rows").addEventListener("change",e=>{if(e.target.tagName!=="SELECT")return;const o=view[+e.target.dataset.i];mark(o,e.target.value,(S[o.k]||{}).t||tplOf(o)[0]);if($("#st").value)render();else stats()});
-["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>$("#"+id).addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()}));
-$("#more").onclick=()=>{shown+=PAGE;render()};
-$("#exp").onclick=()=>{const h=["Cliente","Telefone","Cidade","CEP","Data cancelamento","Motivo","Detalhe","Situação","Mensagem"];
-  const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\s+/g," ")}"`;
-  const l=view.map(o=>[o.nome,fmt(o.tel),o.cid,o.cep,fd(o.c),o.l,o.obs,(ST.find(s=>s[0]===stOf(o))||[])[1],(S[o.k]||{}).t||""].map(q).join(";"));
-  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+[h.map(q).join(";"),...l].join("\r\n")],{type:"text/csv"}));a.download="ex-clientes-filtrado.csv";a.click()};
-const drop=$("#drop"),inp=$("#file");
-const load=f=>f&&Papa.parse(f,{header:true,delimiter:";",skipEmptyLines:true,complete:r=>build(r.data)});
-drop.onclick=()=>inp.click();drop.onkeydown=e=>{if(e.key==="Enter")inp.click()};inp.onchange=()=>load(inp.files[0]);
-drop.ondragover=e=>{e.preventDefault();drop.classList.add("on")};drop.ondragleave=()=>drop.classList.remove("on");
-drop.ondrop=e=>{e.preventDefault();drop.classList.remove("on");load(e.dataTransfer.files[0])};
-</script></main></body></html>
+
