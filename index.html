@@ -240,7 +240,14 @@ function render(){
         <td>${fd(o.c)}<small>${ago}</small></td>
         <td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc((o.obs||"").split("\n")[0].slice(0,80))}</small></td>
         <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
-        <td><button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button><small>Modelo: ${esc(msg)}</small></td>
+        <td>
+  <button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button>
+  <select class="row-template" data-i="${i}" aria-label="Template usado no contato">
+    <option value="">Template usado...</option>
+    ${T.map(([v,l])=>`<option value="${esc(v)}"${((S[o.k]||{}).t===v)?" selected":""}>${esc(v)}</option>`).join("")}
+  </select>
+  <small>Template salvo: ${esc((S[o.k]||{}).t||"nenhum")}</small>
+</td>
       </tr>`;
     }).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Desmarque "Só com WhatsApp válido" ou amplie os filtros.</td></tr>`;
     $("#more").classList.toggle("hid",view.length<=shown);
@@ -272,10 +279,28 @@ $("#rows").addEventListener("click",e=>{
   const o=view[+b.dataset.i];if(!o)return;
   copyClientName(b);
 });
+async function saveTemplate(o,t){
+  const previous={...(S[o.k]||{s:"novo"})};
+  S[o.k]={...previous,t:t||""};save();render();stats();
+  if(!window.sb||!o.dbid)return true;
+  try{
+    const {error}=await sb.from("clientes").update({modelo_abordagem:t||null}).eq("id",o.dbid);
+    if(error)throw error;
+    return true;
+  }catch(error){
+    console.error("Falha ao salvar template:",error);
+    S[o.k]=previous;save();render();stats();
+    return false;
+  }
+}
 $("#rows").addEventListener("change",e=>{
-  if(e.target.tagName!=="SELECT")return;
   const o=view[+e.target.dataset.i];if(!o)return;
-  mark(o,e.target.value,(S[o.k]||{}).t||tplOf(o)[0]);
+  if(e.target.classList.contains("row-template")){
+    saveTemplate(o,e.target.value);
+    return;
+  }
+  if(e.target.tagName!=="SELECT")return;
+  mark(o,e.target.value,(S[o.k]||{}).t||"");
 });
 ["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
   const el=$("#"+id);if(el)el.addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()});
