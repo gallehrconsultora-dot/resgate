@@ -227,19 +227,20 @@ async function mark(o,s,t){
   const p=S[o.k]||{};
   const now=new Date().toISOString();
   S[o.k]={s,t:t||p.t||"",d:now.slice(0,10)};save();
-  if(!window.sb||!o.dbid)return true;
+  if(!window.sb)return true;
   try{
-    const {data,error}=await sb.from("clientes")
-      .update({status_recuperacao:s,ultimo_contato_at:now,modelo_abordagem:t||p.t||"",atualizado_em:now})
-      .eq("id",o.dbid)
-      .select("id,status_recuperacao")
-      .single();
-    if(error||!data)throw error||new Error("Nenhum registro foi atualizado");
+    const payload={status_recuperacao:s,ultimo_contato_at:now,modelo_abordagem:t||p.t||"",atualizado_em:now};
+    // A chave é o identificador estável do relatório; usamos ela para não depender do UUID carregado na tabela.
+    const {error}=await sb.from("clientes").update(payload).eq("chave",o.k);
+    if(error)throw error;
+    const {data:check,error:checkError}=await sb.from("clientes").select("status_recuperacao").eq("chave",o.k).maybeSingle();
+    if(checkError)throw checkError;
+    if(!check||check.status_recuperacao!==s)throw new Error("O banco não confirmou o novo status");
     return true;
   }catch(error){
     console.error("Erro ao salvar status:",error);
-    // Mantém a interface sincronizada apenas até a próxima tentativa.
-    const msg=$id("loginMsg"); if(msg)msg.textContent="Não foi possível salvar este status no banco.";
+    S[o.k]=p;save();render();
+    const msg=$id("loginMsg");if(msg)msg.textContent="Não foi possível salvar o status. Tente novamente.";
     return false;
   }
 }
