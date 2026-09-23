@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Resgate de ex-clientes · Vem Pra Uno</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
 function copyClientName(btn){const i=Number(btn.dataset.i);const o=view[i];if(!o)return;const done=()=>{const old=btn.innerHTML;btn.innerHTML="✓ Nome copiado";setTimeout(()=>btn.innerHTML=old,1400)};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(o.nome).then(done).catch(()=>fallbackCopy(o.nome,done))}else fallbackCopy(o.nome,done)}
 function fallbackCopy(text,done){const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();done()}
 </script>
