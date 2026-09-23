@@ -204,4 +204,18 @@ $id("loginForm").addEventListener("submit",async e=>{
 });
 boot();
 })();
+</script><script>
+(function(){
+function wireUpload(){
+ const drop=document.getElementById("drop"),inp=document.getElementById("file");
+ if(!drop||!inp)return;
+ const loadFile=f=>{if(!f)return;drop.querySelector("b").textContent="⏳ Lendo relatório...";Papa.parse(f,{header:true,delimiter:";",skipEmptyLines:true,complete:r=>{try{build(r.data);drop.querySelector("b").textContent="✓ Relatório carregado";}catch(e){console.error(e);drop.querySelector("b").textContent="Erro ao ler o relatório";}}})};
+ drop.addEventListener("click",e=>{if(e.target!==inp)inp.click()});
+ inp.addEventListener("change",()=>loadFile(inp.files[0]));
+ drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("on")});
+ drop.addEventListener("dragleave",()=>drop.classList.remove("on"));
+ drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("on");loadFile(e.dataTransfer.files[0])});
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",wireUpload);else wireUpload();
+})();
 </script>
