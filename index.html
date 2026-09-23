@@ -115,7 +115,7 @@ label,.s,small{color:#9aa8b3}
 <div><label for="st">Situação do contato</label><select id="st"></select></div>
 <div><label for="ord">Ordenar por</label><select id="ord"><option value="rec">Cancelou mais recentemente</option><option value="ant">Cancelou há mais tempo</option><option value="ten">Mais tempo como cliente</option><option value="nom">Nome (A–Z)</option></select></div>
 <div><label for="tp">Mensagem do WhatsApp</label><select id="tp"></select></div>
-<div><label class="c"><input type="checkbox" id="pe"> Incluir quem saiu com pendência</label><label class="c"><input type="checkbox" id="wz" checked> Só com WhatsApp válido</label></div>
+<div><label class="c"><input type="checkbox" id="pe"> Incluir quem saiu com pendência</label><label class="c"><input type="checkbox" id="wz"> Só com WhatsApp válido</label></div>
 </div></div>
 <div class="box"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span id="cnt"></span><button class="g" id="exp">⬇ Baixar lista filtrada</button></div>
 <div class="tw"><table><thead><tr><th>Cliente</th><th>Cancelamento</th><th>Motivo</th><th>Contato</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
@@ -212,21 +212,26 @@ async function mark(o,s,t){
   }
 }
 function render(){
-  view=filt();
-  $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
-  $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
-    const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
-    const t=tplOf(o);
-    return `<tr>
-      <td><b>${esc(o.nome)}</b><small>Contrato ${esc(o.id||"—")}${o.n>1?` · ${o.n} contratos`:""}${o.ten!==null?` · ficou ${o.ten} meses`:""}</small><small>${esc(o.cid)} · CEP ${esc(o.cep)}${o.comp?" · "+esc(o.comp):""}</small></td>
-      <td>${fd(o.c)}<small>${ago}</small></td>
-      <td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc(o.obs.split("\n")[0].slice(0,80))}</small></td>
-      <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
-      <td><button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button><small>Modelo: ${esc(t[0])}</small></td>
-    </tr>`;
-  }).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Tente ampliar a época ou o motivo.</td></tr>`;
-  $("#more").classList.toggle("hid",view.length<=shown);
-  stats();
+  try{
+    view=filt();
+    $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
+    $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
+      const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
+      const msg=T.length?T[i%T.length][0]:"Mensagem";
+      return `<tr>
+        <td><b>${esc(o.nome)}</b><small>Contrato ${esc(o.id||"—")}${o.n>1?` · ${o.n} contratos`:""}${o.ten!==null?` · ficou ${o.ten} meses`:""}</small><small>${esc(o.cid)} · CEP ${esc(o.cep)}${o.comp?" · "+esc(o.comp):""}</small></td>
+        <td>${fd(o.c)}<small>${ago}</small></td>
+        <td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc((o.obs||"").split("\n")[0].slice(0,80))}</small></td>
+        <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
+        <td><button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button><small>Modelo: ${esc(msg)}</small></td>
+      </tr>`;
+    }).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Desmarque "Só com WhatsApp válido" ou amplie os filtros.</td></tr>`;
+    $("#more").classList.toggle("hid",view.length<=shown);
+    stats();
+  }catch(err){
+    console.error("Erro ao montar a lista:",err);
+    $("#rows").innerHTML=`<tr><td colspan="5">O banco carregou os clientes, mas houve um erro ao montar a tabela. Recarregue a página.</td></tr>`;
+  }
 }
 function stats(){
   const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>v.s==="respondeu"||v.s==="voltou").length,b=e.filter(v=>v.s==="voltou").length;
