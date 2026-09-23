@@ -72,6 +72,19 @@ tbody tr:hover{background:#1b2730!important}
 label,.s,small{color:var(--mu)}
 a{color:#ff9b61}
 button.g{background:#26323b!important;color:#edf2f5!important;border-color:var(--br)!important}
+</style><style id="final-dark-theme">
+html,body{background:#0d1318!important;color:#edf2f5!important}
+.box,.chip,table,.tw{background:#171f26!important;color:#edf2f5!important;border-color:#2a3640!important}
+#drop{background:#121a21!important;color:#edf2f5!important}
+input,select{background:#111a21!important;color:#edf2f5!important;border-color:#2a3640!important}
+input::placeholder{color:#71808d!important}
+th{background:#111a21!important;color:#edf2f5!important;border-color:#2a3640!important}
+td{color:#edf2f5!important;border-color:#2a3640!important}
+tbody tr:hover{background:#1b2730!important}
+label,.s,small{color:#9aa8b3}
+#cnt b{color:#edf2f5}
+.t.ok{background:#163326!important;color:#8fe0ae!important}.t.pend{background:#3a2d14!important;color:#f2c56b!important}.t.ign{background:#263039!important;color:#b8c3ca!important}
+.g{background:#26323b!important;color:#edf2f5!important;border-color:#2a3640!important}
 </style></head><body><style>
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0d1318}
 .login-card{width:min(420px,100%);background:#171f26;border:1px solid #2a3640;border-radius:18px;padding:28px;box-shadow:0 20px 60px #0006}
@@ -105,7 +118,7 @@ button.g{background:#26323b!important;color:#edf2f5!important;border-color:var(-
 <div><label class="c"><input type="checkbox" id="pe"> Incluir quem saiu com pendência</label><label class="c"><input type="checkbox" id="wz" checked> Só com WhatsApp válido</label></div>
 </div></div>
 <div class="box"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span id="cnt"></span><button class="g" id="exp">⬇ Baixar lista filtrada</button></div>
-<div class="tw"><table><thead><tr><th>Cliente</th><th>Cancelamento</th><th>Motivo</th><th>Contato</th><th>WhatsApp</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Cliente</th><th>Cancelamento</th><th>Motivo</th><th>Contato</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
 <p style="text-align:center"><button class="g hid" id="more">Mostrar mais</button></p></div>
 <details class="box"><summary>Resultado por mensagem (teste A/B)</summary><div id="stats" style="margin-top:8px"></div></details>
 </div>
@@ -174,6 +187,73 @@ function populateAndRender(){
   $("#tp").innerHTML=`<option value="ab">Alternar entre as 6 (teste A/B)</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");render();
 }
+const stOf=o=>(S[o.k]||{}).s||"novo";
+const tplOf=o=>{const v=$("#tp").value;return T[v==="ab"?hash(o.k)%T.length:+v]};
+function filt(){
+  const q=norm($("#q").value),qd=q.replace(/\D/g,""),cat=$("#cat").value,cid=$("#cid").value,st=$("#st").value,[a,b]=($("#jan").value||"").split("-").map(Number);
+  const pe=$("#pe").checked,wz=$("#wz").checked;
+  let r=D.filter(o=>{
+    if(cat?o.l!==cat:!(o.g==="ok"||(pe&&o.g==="pend")))return false;
+    if((cid&&o.cid!==cid)||(st&&stOf(o)!==st)||(wz&&!o.tel))return false;
+    if(q&&!(norm(o.nome).includes(q)||(qd&&(o.tel.includes(qd)||o.cep.replace(/\D/g,"").includes(qd)))))return false;
+    if($("#jan").value){const x=mAgo(o.c);if(x===null||x<a||x>=b)return false}
+    return true;
+  });
+  const z=$("#ord").value,cv=o=>o.c?+o.c:0;
+  r.sort(z==="ant"?(x,y)=>(cv(x)||9e15)-(cv(y)||9e15):z==="ten"?(x,y)=>(y.ten||0)-(x.ten||0):z==="nom"?(x,y)=>x.nome.localeCompare(y.nome,"pt-BR"):(x,y)=>cv(y)-cv(x));
+  return r;
+}
+async function mark(o,s,t){
+  const p=S[o.k]||{};
+  S[o.k]={s,t:t||p.t||"",d:new Date().toISOString().slice(0,10)};save();
+  if(window.sb&&o.dbid){
+    const {error}=await sb.from("clientes").update({status_recuperacao:s,ultimo_contato_at:new Date().toISOString(),modelo_abordagem:t||p.t||"",atualizado_em:new Date().toISOString()}).eq("id",o.dbid);
+    if(error)console.error("Erro ao salvar status:",error);
+  }
+}
+function render(){
+  view=filt();
+  $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
+  $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
+    const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
+    const t=tplOf(o);
+    return `<tr>
+      <td><b>${esc(o.nome)}</b><small>Contrato ${esc(o.id||"—")}${o.n>1?` · ${o.n} contratos`:""}${o.ten!==null?` · ficou ${o.ten} meses`:""}</small><small>${esc(o.cid)} · CEP ${esc(o.cep)}${o.comp?" · "+esc(o.comp):""}</small></td>
+      <td>${fd(o.c)}<small>${ago}</small></td>
+      <td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc(o.obs.split("\n")[0].slice(0,80))}</small></td>
+      <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
+      <td><button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button><small>Modelo: ${esc(t[0])}</small></td>
+    </tr>`;
+  }).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Tente ampliar a época ou o motivo.</td></tr>`;
+  $("#more").classList.toggle("hid",view.length<=shown);
+  stats();
+}
+function stats(){
+  const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>v.s==="respondeu"||v.s==="voltou").length,b=e.filter(v=>v.s==="voltou").length;
+    return `<tr><td>${esc(t[0])}</td><td>${e.length}</td><td>${r}</td><td>${e.length?Math.round(100*r/e.length)+"%":"–"}</td><td>${b}</td></tr>`}).join("");
+  $("#stats").innerHTML=`<div class="tw"><table><thead><tr><th>Mensagem</th><th>Contatados</th><th>Responderam</th><th>Taxa de resposta</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s">Os status ficam salvos no Supabase. Ao clicar em "Copiar nome", o nome vai para a área de transferência.</p>`;
+}
+$("#rows").addEventListener("click",e=>{
+  const b=e.target.closest("button.copy-name");if(!b)return;
+  const o=view[+b.dataset.i];if(!o)return;
+  copyClientName(b);
+});
+$("#rows").addEventListener("change",e=>{
+  if(e.target.tagName!=="SELECT")return;
+  const o=view[+e.target.dataset.i];if(!o)return;
+  mark(o,e.target.value,(S[o.k]||{}).t||tplOf(o)[0]);
+  stats();
+});
+["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
+  const el=$("#"+id);if(el)el.addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()});
+});
+$("#more").onclick=()=>{shown+=PAGE;render()};
+$("#exp").onclick=()=>{
+  const h=["Cliente","Telefone","Cidade","CEP","Data cancelamento","Motivo","Detalhe","Situação","Mensagem"];
+  const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\s+/g," ")}"`;
+  const l=view.map(o=>[o.nome,fmt(o.tel),o.cid,o.cep,fd(o.c),o.l,o.obs,(ST.find(s=>s[0]===stOf(o))||[])[1],(S[o.k]||{}).t||""].map(q).join(";"));
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+[h.map(q).join(";"),...l].join("\r\n")],{type:"text/csv"}));a.download="ex-clientes-filtrado.csv";a.click();
+};
 </script>
 <script>
 (function(){
