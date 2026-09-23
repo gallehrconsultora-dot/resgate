@@ -288,6 +288,7 @@ const SUPABASE_KEY="sb_publishable_Usme23106mFHvQ3iLdKsBw_1DWWvgAX";
 if(!window.supabase){document.querySelector("#loginMsg").textContent="Não foi possível carregar o serviço de login. Atualize a página.";return}
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 window.sb=client;
+const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
 const $id=id=>document.getElementById(id);
 async function openApp(){
   $id("login").style.display="none";
