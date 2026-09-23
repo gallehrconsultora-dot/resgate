@@ -278,19 +278,21 @@ document.querySelector("#contactTabs").addEventListener("click",e=>{
 });
 function stats(){
   const all=Object.values(S);
+  // Só consideramos "chamado" quem saiu de Novo e entrou em uma situação de contato.
+  // Assim, apenas escolher um template antecipadamente não conta como mensagem enviada.
+  const contacted=["contatado","respondeu","sem","voltou","semretorno"];
   const rows=T.map(t=>{
-    const e=all.filter(v=>v.t===t[0]&&v.t);
+    const e=all.filter(v=>v.t===t[0]&&contacted.includes(v.s));
     const ret=e.filter(v=>["respondeu","sem","voltou"].includes(v.s)).length;
     const semret=e.filter(v=>v.s==="semretorno").length;
     const voltou=e.filter(v=>v.s==="voltou").length;
-    const contato=e.filter(v=>["contatado","respondeu","sem","voltou","semretorno"].includes(v.s)).length;
     const taxa=e.length?Math.round(100*ret/e.length):0;
     return `<tr><td><strong>${esc(t[0])}</strong></td><td>${e.length}</td><td>${ret}</td><td>${taxa}%</td><td>${semret}</td><td>${voltou}</td></tr>`;
   }).join("");
-  const total=all.filter(v=>v.t).length;
-  const ret=all.filter(v=>v.t&&["respondeu","sem","voltou"].includes(v.s)).length;
+  const total=all.filter(v=>v.t&&contacted.includes(v.s)).length;
+  const ret=all.filter(v=>v.t&&contacted.includes(v.s)&&["respondeu","sem","voltou"].includes(v.s)).length;
   const taxa=total?Math.round(100*ret/total):0;
-  $("#stats").innerHTML=`<div class="chips" style="margin-bottom:14px"><div class="chip"><strong>${total.toLocaleString("pt-BR")}</strong><small>Contatos com template</small></div><div class="chip"><strong>${ret.toLocaleString("pt-BR")}</strong><small>Retornos</small></div><div class="chip"><strong>${taxa}%</strong><small>Taxa geral de retorno</small></div></div><div class="tw"><table><thead><tr><th>Template</th><th>Enviados</th><th>Retornos</th><th>Taxa de sucesso</th><th>Sem retorno</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s" style="margin-top:10px">Retorno = <strong>Respondeu + Sem interesse + Voltou</strong>. "Sem retorno" não entra como retorno. A taxa é calculada sobre os clientes com template registrado.</p>`;
+  $("#stats").innerHTML=`<div class="chips" style="margin-bottom:14px"><div class="chip"><strong>${total.toLocaleString("pt-BR")}</strong><small>Contatos realizados</small></div><div class="chip"><strong>${ret.toLocaleString("pt-BR")}</strong><small>Retornos</small></div><div class="chip"><strong>${taxa}%</strong><small>Taxa geral de retorno</small></div></div><div class="tw"><table><thead><tr><th>Template</th><th>Enviados</th><th>Retornos</th><th>Taxa de sucesso</th><th>Sem retorno</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s" style="margin-top:10px">Enviado = cliente com status <strong>Contatado, Respondeu, Sem interesse, Voltou ou Sem retorno</strong> e template registrado. Retorno = <strong>Respondeu + Sem interesse + Voltou</strong>. "Sem formas de contato" e "Deixou débitos" ficam fora da taxa.</p>`;
 }
 $("#rows").addEventListener("click",e=>{
   const b=e.target.closest("button.copy-name");if(!b)return;
