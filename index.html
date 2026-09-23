@@ -120,6 +120,8 @@ label,.s,small{color:#9aa8b3}
   <button type="button" class="contact-tab" data-status="respondeu">Responderam <span class="tab-count" data-count="respondeu">0</span></button>
   <button type="button" class="contact-tab" data-status="voltou">Voltaram 🧡 <span class="tab-count" data-count="voltou">0</span></button>
   <button type="button" class="contact-tab" data-status="sem">Sem interesse <span class="tab-count" data-count="sem">0</span></button>
+  <button type="button" class="contact-tab" data-status="semcontato">Sem formas de contato <span class="tab-count" data-count="semcontato">0</span></button>
+  <button type="button" class="contact-tab" data-status="debito">Deixou débitos <span class="tab-count" data-count="debito">0</span></button>
 </div>
 <div class="box" style="margin-top:12px"><div class="f">
 <div><label for="q">Buscar</label><input type="search" id="q" placeholder="Nome, telefone ou CEP"></div>
@@ -144,7 +146,7 @@ const T=[["Natural","{n}, aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVi que você
 ["Condição de retorno","{n}, aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVocê já fez parte da Uno e estamos com uma condição especial para quem está pensando em voltar.\n\nHoje você consideraria retornar para a gente?"],
 ["Sem pressão","Oi, {n}! Aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVi que você já foi cliente da Uno e estamos com uma condição especial de retorno.\n\nNão sei se você está pensando em trocar de internet agora, mas posso te apresentar a condição e você vê se faz sentido para você. 😊"],
 ["Descoberta","Oi, {n}! Aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVocê já conhece a Uno, então queria entender como está sua experiência com a internet atualmente.\n\nO que você mais valoriza hoje: preço, velocidade ou estabilidade?"]];
-const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"]];
+const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"],["semcontato","Sem formas de contato"],["debito","Deixou débitos"]];
 // motivo da saída: [grupo, rótulo, regex] — a primeira que casar vale. ok = pode contatar, pend = pendência financeira, ign = provavelmente ainda é cliente / não contatar
 const R=[["ign","Teste ou duplicidade",/\bteste\b|duplic/],["ign","Falecimento",/falec|obito/],["ign","Troca de titularidade",/titular|antigo:.*novo:/],
 ["ign","Migração ou upgrade (provável cliente ativo)",/migra|migrou|upgrade|uograde|\bup\b|downgrade|alteracao de plano|troca de plano|mudanca de plano|adicional|plano do hexa|ajuste de contrato|comodato (vinculado|ajustado|inserido)|sem comodato|sem roteador|dobro|\d+ ?mb/],
@@ -251,8 +253,8 @@ function render(){
   }
 }
 function updateContactTabs(){
-  const counts={todos:D.length,novo:0,contatado:0,respondeu:0,voltou:0,sem:0};
-  D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++});
+  const counts={todos:0,novo:0,contatado:0,respondeu:0,voltou:0,sem:0,semcontato:0,debito:0};
+  D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++}); counts.todos=D.length;
   Object.keys(counts).forEach(k=>{const el=document.querySelector('[data-count="'+k+'"]');if(el)el.textContent=counts[k].toLocaleString("pt-BR")});
   document.querySelectorAll(".contact-tab").forEach(b=>b.classList.toggle("active",b.dataset.status===activeStatus));
 }
