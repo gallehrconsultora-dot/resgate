@@ -226,19 +226,15 @@ function filt(){
 async function mark(o,s,t){
   const previous={...(S[o.k]||{s:"novo"})};
   const now=new Date().toISOString();
-  S[o.k]={s,t:t||previous.t||"",d:now.slice(0,10)};save();
-  render();stats();
+  S[o.k]={s,t:t||previous.t||"",d:now.slice(0,10)};save();render();stats();
   if(!window.sb||!o.dbid)return true;
   try{
     const payload={status_recuperacao:s,ultimo_contato_at:now,modelo_abordagem:t||previous.t||"",atualizado_em:now};
     const {error}=await sb.from("clientes").update(payload).eq("id",o.dbid);
     if(error)throw error;
-    const {data,error:readError}=await sb.from("clientes").select("id,status_recuperacao").eq("id",o.dbid).single();
-    if(readError)throw readError;
-    if(data.status_recuperacao!==s)throw new Error("Confirmação do banco divergente");
     return true;
   }catch(error){
-    console.error("Falha ao persistir status:",error);
+    console.error("Falha ao salvar status:",error);
     S[o.k]=previous;save();render();stats();
     return false;
   }
