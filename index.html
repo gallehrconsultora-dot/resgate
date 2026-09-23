@@ -126,8 +126,9 @@ label,.s,small{color:#9aa8b3}
   <button type="button" class="contact-tab" data-status="semretorno">Sem retorno <span class="tab-count" data-count="semretorno">0</span></button>
   <button type="button" class="contact-tab" data-status="semcontato">Sem formas de contato <span class="tab-count" data-count="semcontato">0</span></button>
   <button type="button" class="contact-tab" data-status="debito">Deixou débitos <span class="tab-count" data-count="debito">0</span></button>
+  <button type="button" class="contact-tab" id="resultsTab" data-status="__stats">📊 Resultados</button>
 </div>
-<div class="box" style="margin-top:12px"><div class="f">
+<div id="workArea"><div class="box" style="margin-top:12px"><div class="f">
 <div><label for="q">Buscar</label><input type="search" id="q" placeholder="Nome, telefone ou CEP"></div>
 <div><label for="cat">Motivo da saída</label><select id="cat"></select></div>
 <div><label for="jan">Quando cancelou</label><select id="jan"><option value="">Qualquer época</option><option value="0-6">Últimos 6 meses</option><option value="6-12">Há 6 a 12 meses</option><option value="12-24">Há 1 a 2 anos</option><option value="24-999">Há mais de 2 anos</option></select></div>
@@ -140,7 +141,7 @@ label,.s,small{color:#9aa8b3}
 <div class="box"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span id="cnt"></span><button class="g" id="exp">⬇ Baixar lista filtrada</button></div>
 <div class="tw"><table><thead><tr><th>Cliente</th><th>Cancelamento</th><th>Motivo</th><th>Contato</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
 <p style="text-align:center"><button class="g hid" id="more">Mostrar mais</button></p></div>
-<details class="box"><summary>Resultado por mensagem (teste A/B)</summary><div id="stats" style="margin-top:8px"></div></details>
+</div><div id="statsPanel" class="box hid"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><h2 style="margin:0">Resultados por template</h2><p class="s" style="margin:4px 0 0">Taxa de retorno com base nos clientes que receberam cada template.</p></div></div><div id="stats" style="margin-top:14px"></div></div>
 </div>
 <script>
 const $=s=>document.querySelector(s),now=new Date(),PAGE=100;
@@ -265,14 +266,31 @@ function updateContactTabs(){
 }
 document.querySelector("#contactTabs").addEventListener("click",e=>{
   const b=e.target.closest(".contact-tab");if(!b)return;
+  const isStats=b.dataset.status==="__stats";
+  $("#workArea").classList.toggle("hid",isStats);
+  $("#statsPanel").classList.toggle("hid",!isStats);
+  document.querySelectorAll(".contact-tab").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  if(isStats){stats();return}
   activeStatus=b.dataset.status||"";
   const st=$("#st");if(st)st.value=activeStatus;
   shown=PAGE;updateContactTabs();render();
 });
 function stats(){
-  const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>["respondeu","voltou","sem"].includes(v.s)).length,b=e.filter(v=>v.s==="voltou").length;
-    return `<tr><td>${esc(t[0])}</td><td>${e.length}</td><td>${r}</td><td>${e.length?Math.round(100*r/e.length)+"%":"–"}</td><td>${b}</td></tr>`}).join("");
-  $("#stats").innerHTML=`<div class="tw"><table><thead><tr><th>Mensagem</th><th>Contatados</th><th>Responderam</th><th>Taxa de resposta</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s">Os status ficam salvos no Supabase. Ao clicar em "Copiar nome", o nome vai para a área de transferência.</p>`;
+  const all=Object.values(S);
+  const rows=T.map(t=>{
+    const e=all.filter(v=>v.t===t[0]&&v.t);
+    const ret=e.filter(v=>["respondeu","sem","voltou"].includes(v.s)).length;
+    const semret=e.filter(v=>v.s==="semretorno").length;
+    const voltou=e.filter(v=>v.s==="voltou").length;
+    const contato=e.filter(v=>["contatado","respondeu","sem","voltou","semretorno"].includes(v.s)).length;
+    const taxa=e.length?Math.round(100*ret/e.length):0;
+    return `<tr><td><strong>${esc(t[0])}</strong></td><td>${e.length}</td><td>${ret}</td><td>${taxa}%</td><td>${semret}</td><td>${voltou}</td></tr>`;
+  }).join("");
+  const total=all.filter(v=>v.t).length;
+  const ret=all.filter(v=>v.t&&["respondeu","sem","voltou"].includes(v.s)).length;
+  const taxa=total?Math.round(100*ret/total):0;
+  $("#stats").innerHTML=`<div class="chips" style="margin-bottom:14px"><div class="chip"><strong>${total.toLocaleString("pt-BR")}</strong><small>Contatos com template</small></div><div class="chip"><strong>${ret.toLocaleString("pt-BR")}</strong><small>Retornos</small></div><div class="chip"><strong>${taxa}%</strong><small>Taxa geral de retorno</small></div></div><div class="tw"><table><thead><tr><th>Template</th><th>Enviados</th><th>Retornos</th><th>Taxa de sucesso</th><th>Sem retorno</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s" style="margin-top:10px">Retorno = <strong>Respondeu + Sem interesse + Voltou</strong>. "Sem retorno" não entra como retorno. A taxa é calculada sobre os clientes com template registrado.</p>`;
 }
 $("#rows").addEventListener("click",e=>{
   const b=e.target.closest("button.copy-name");if(!b)return;
