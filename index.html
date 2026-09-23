@@ -153,6 +153,12 @@ let D=[],view=[],shown=PAGE,S={};
 try{S=JSON.parse(localStorage.getItem("uno-status")||"{}")}catch(e){}
 const save=()=>{try{localStorage.setItem("uno-status",JSON.stringify(S))}catch(e){}};
 
+const norm=v=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+const pdt=v=>{if(!v)return null;const s=String(v).trim();const m=s.match(/^(\d{1,2})[\\/.-](\d{1,2})[\\/.-](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const d=new Date(s);return isNaN(d)?null:d};
+const phone=r=>String(r["WhatsApp"]||r["Telefone"]||r["Celular"]||r["Fone"]||"").replace(/\D/g,"");
+const cls=obs=>{const x=norm(obs);if(/debit|debito|pendenc/.test(x))return ["pend","Saiu com pendência"];return ["ok","Pode contatar"]};
+const fd=d=>d instanceof Date&&!isNaN(d)?d.toLocaleDateString("pt-BR"):"—";
+const mAgo=d=>{if(!(d instanceof Date)||isNaN(d))return null;return (now-d)/(1000*60*60*24*30.4375)};
 async function build(rows){
   const m=new Map();
   for(const r of rows){
