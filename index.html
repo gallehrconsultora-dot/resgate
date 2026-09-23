@@ -131,7 +131,7 @@ label,.s,small{color:#9aa8b3}
 <div id="workArea"><div class="box" style="margin-top:12px"><div class="f">
 <div><label for="q">Buscar</label><input type="search" id="q" placeholder="Nome, telefone ou CEP"></div>
 <div><label for="cat">Motivo da saída</label><select id="cat"></select></div>
-<div><label for="jan">Quando cancelou</label><select id="jan"><option value="">Qualquer época</option><option value="0-6">Últimos 6 meses</option><option value="6-12">Há 6 a 12 meses</option><option value="12-24">Há 1 a 2 anos</option><option value="24-999">Há mais de 2 anos</option></select></div>
+<div><label for="jan">Quando cancelou</label><select id="jan"><option value="">Qualquer época</option><option value="0-6">Últimos 6 meses</option><option value="6-12">Há 6 a 12 meses</option><option value="12-24">Há 1 a 2 anos</option><option value="24-999">Há mais de 2 anos</option><optgroup label="Por ano" id="janYears"></optgroup></select></div>
 <div><label for="cid">Cidade</label><select id="cid"></select></div>
 <div><label for="st">Situação do contato</label><select id="st"></select></div>
 <div><label for="ord">Ordenar por</label><select id="ord"><option value="rec">Cancelou mais recentemente</option><option value="ant">Cancelou há mais tempo</option><option value="ten">Mais tempo como cliente</option><option value="nom">Nome (A–Z)</option></select></div>
@@ -190,6 +190,8 @@ function populateAndRender(){
   const labs=[...new Set(D.map(o=>o.l))].sort();
   $("#cat").innerHTML=`<option value="">Todos que posso contatar</option>`+opt(labs,l=>`<option>${esc(l)}</option>`);
   $("#cid").innerHTML=`<option value="">Todas</option>`+opt([...new Set(D.map(o=>o.cid))].sort(),x=>`<option>${esc(x)}</option>`);
+  const years=[...new Set(D.filter(o=>o.c).map(o=>o.c.getFullYear()))].sort((a,b)=>b-a);
+  $("#janYears").innerHTML=years.map(y=>`<option value="year-${y}">${y}</option>`).join("");
   $("#st").innerHTML=`<option value="">Todas</option>`+opt(ST,([v,l])=>`<option value="${v}">${l}</option>`);
   $("#tp").innerHTML=`<option value="">Selecione o template usado</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");updateContactTabs();render();
@@ -205,7 +207,13 @@ function filt(){
     const statusFilter=activeStatus||st;
     if((cid&&o.cid!==cid)||(statusFilter&&stOf(o)!==statusFilter)||(wz&&!o.tel))return false;
     if(q&&!(norm(o.nome).includes(q)||(qd&&(o.tel.includes(qd)||o.cep.replace(/\D/g,"").includes(qd)))))return false;
-    if($("#jan").value){const x=mAgo(o.c);if(x===null||x<a||x>=b)return false}
+    const period=$("#jan").value;
+    if(period.startsWith("year-")){
+      const year=Number(period.slice(5));
+      if(!o.c||o.c.getFullYear()!==year)return false;
+    }else if(period){
+      const x=mAgo(o.c);if(x===null||x<a||x>=b)return false;
+    }
     return true;
   });
   const z=$("#ord").value,cv=o=>o.c?+o.c:0;
