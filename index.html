@@ -25,9 +25,35 @@ td{padding:9px 8px;border-bottom:1px solid var(--br);vertical-align:top}td small
 a.wa{background:var(--wa);white-space:nowrap}a.wa.off{background:var(--ig);pointer-events:none;opacity:.5}
 td select{padding:5px;width:auto}.hid{display:none}
 details summary{cursor:pointer;font-weight:600}
+</style><style>
+/* Redesign 2026 */
+:root{--bg:#f6f7f9;--cd:#fff;--tx:#17212b;--mu:#71808d;--br:#e7ebef;--ac:#ff6b18;--wa:#15945a;--wr:#b87900;--ig:#87939d;--shadow:0 8px 28px rgba(23,33,43,.07)}
+body{background:var(--bg);font-size:14px}
+main{max-width:1240px;padding:24px 18px 70px}
+h1{font-size:28px;letter-spacing:-.03em;margin-bottom:4px}.s{font-size:13px}
+.box{border:1px solid var(--br);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+#drop{padding:28px;border-style:dashed;background:linear-gradient(180deg,#fff,#fbfcfd);transition:.2s}
+#drop:hover,#drop.on{border-color:var(--ac);transform:translateY(-1px)}
+.chips{gap:12px;margin:16px 0}
+.chip{border:1px solid var(--br);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.chip strong{font-size:25px;letter-spacing:-.03em}.chip small{font-size:12px}
+.f{gap:10px}
+input[type=search],select{border:1px solid #dfe5ea;background:#fafbfc;border-radius:9px;padding:9px 10px}
+button,a.b{border-radius:9px;font-weight:650;padding:9px 13px}
+a.wa{background:var(--wa)}
+.tw{border-radius:10px}
+table{background:#fff}th{padding:10px;border-bottom:1px solid var(--br);background:#fafbfc}td{padding:11px 10px}
+tbody tr{transition:.15s}tbody tr:hover{background:#fbfcfd}
+.t{padding:3px 9px;font-weight:600;border:0;background:#eef8f2}.pend{background:#fff5df}.ign{background:#eef1f3}
+td select{border-radius:8px;background:#fff}
+details.box{margin-top:14px}
+#cnt{font-size:13px;color:var(--mu)}
+#cnt b{color:var(--tx);font-size:16px}
+@media(max-width:850px){.f{grid-template-columns:repeat(2,minmax(0,1fr))}.chips{display:grid;grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){main{padding:14px 10px 50px}.f{grid-template-columns:1fr}.chips{grid-template-columns:1fr 1fr}.chip{padding:11px}.chip strong{font-size:21px}td:nth-child(3){display:none}}
 </style></head><body><main>
-<h1>Resgate de ex-clientes</h1>
-<p class="s">Carregue o relatório do IXC. Tudo roda no seu navegador: nenhum dado sai do seu computador.</p>
+<h1>🧡 Resgate de ex-clientes</h1>
+<p class="s">Encontre, aborde e acompanhe ex-clientes em poucos cliques. Os dados ficam somente neste navegador.</p>
 <div class="box" id="drop" tabindex="0"><b>Solte o relatório CSV aqui ou clique para escolher</b><span>Formato do IXC, separado por ponto e vírgula</span><input type="file" id="file" accept=".csv,text/csv" class="hid"></div>
 <div id="app" class="hid">
 <div class="chips" id="chips"></div>
@@ -41,7 +67,7 @@ details summary{cursor:pointer;font-weight:600}
 <div><label for="tp">Mensagem do WhatsApp</label><select id="tp"></select></div>
 <div><label class="c"><input type="checkbox" id="pe"> Incluir quem saiu com pendência</label><label class="c"><input type="checkbox" id="wz" checked> Só com WhatsApp válido</label></div>
 </div></div>
-<div class="box"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span id="cnt"></span><button class="g" id="exp">Baixar lista filtrada (CSV)</button></div>
+<div class="box"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span id="cnt"></span><button class="g" id="exp">⬇ Baixar lista filtrada</button></div>
 <div class="tw"><table><thead><tr><th>Cliente</th><th>Cancelamento</th><th>Motivo</th><th>Contato</th><th>WhatsApp</th></tr></thead><tbody id="rows"></tbody></table></div>
 <p style="text-align:center"><button class="g hid" id="more">Mostrar mais</button></p></div>
 <details class="box"><summary>Resultado por mensagem (teste A/B)</summary><div id="stats" style="margin-top:8px"></div></details>
