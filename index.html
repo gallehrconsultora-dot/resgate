@@ -223,10 +223,12 @@ function filt(){
 }
 async function mark(o,s,t){
   const p=S[o.k]||{};
-  S[o.k]={s,t:t||p.t||"",d:new Date().toISOString().slice(0,10)};save();
+  const now=new Date().toISOString();
+  S[o.k]={s,t:t||p.t||"",d:now.slice(0,10)};save();
   if(window.sb&&o.dbid){
-    const {error}=await sb.from("clientes").update({status_recuperacao:s,ultimo_contato_at:new Date().toISOString(),modelo_abordagem:t||p.t||"",atualizado_em:new Date().toISOString()}).eq("id",o.dbid);
-    if(error)console.error("Erro ao salvar status:",error);
+    // Atualiza a interface imediatamente; o banco salva em segundo plano.
+    sb.from("clientes").update({status_recuperacao:s,ultimo_contato_at:now,modelo_abordagem:t||p.t||"",atualizado_em:now}).eq("id",o.dbid)
+      .then(({error})=>{if(error)console.error("Erro ao salvar status:",error)});
   }
 }
 function render(){
@@ -278,9 +280,8 @@ $("#rows").addEventListener("change",async e=>{
   if(e.target.tagName!=="SELECT")return;
   const o=view[+e.target.dataset.i];if(!o)return;
   const next=e.target.value;
-  await mark(o,next,(S[o.k]||{}).t||tplOf(o)[0]);
-  if(activeStatus) render();
-  else render();
+  mark(o,next,(S[o.k]||{}).t||tplOf(o)[0]);
+  render();
   stats();
 });
 ["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
