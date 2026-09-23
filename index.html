@@ -295,43 +295,34 @@ async function openApp(){
   await loadFromDb();
 }
 async function loadFromDb(){
-  const msg=$id("loginMsg");
-  const dropMsg=document.querySelector("#drop b");
+  const msg=$id("loginMsg"),dropMsg=document.querySelector("#drop b");
   if(dropMsg)dropMsg.textContent="⏳ Carregando clientes salvos...";
   msg.textContent="Carregando seus clientes...";
   try{
-    const data=[];
-    const batch=1000;
+    const data=[],batch=1000;
     for(let from=0;;from+=batch){
-      const {data:part,error}=await client.from("clientes")
-        .select("id,chave,cliente,id_ixc,telefone,cidade,cep,complemento,data_ativacao,data_cancelamento,observacao_cancelamento,classificacao,motivo,status_recuperacao,modelo_abordagem")
-        .order("data_cancelamento",{ascending:false})
-        .range(from,from+batch-1);
+      const {data:part,error}=await client.from("clientes").select("*").range(from,from+batch-1);
       if(error)throw error;
       data.push(...(part||[]));
       if(!part||part.length<batch)break;
     }
-    if(!data.length){
-      throw new Error("O banco respondeu sem clientes.");
-    }
+    if(!data.length)throw new Error("O banco respondeu sem clientes.");
     D=data.map(r=>{
-      const o={k:r.chave,dbid:r.id,nome:r.cliente||"",id:r.id_ixc||"",tel:r.telefone||"",c:r.data_cancelamento?new Date(r.data_cancelamento+"T00:00:00"):null,a:r.data_ativacao?new Date(r.data_ativacao+"T00:00:00"):null,obs:r.observacao_cancelamento||"",g:r.classificacao||"ok",l:r.motivo||"Outro motivo",cep:r.cep||"",cid:r.cidade||"",comp:r.complemento||"",n:1};
+      const o={k:r.chave||("ixc:"+r.id_ixc),dbid:r.id,nome:r.cliente||"",id:r.id_ixc||"",tel:r.telefone||"",c:r.data_cancelamento?new Date(r.data_cancelamento+"T00:00:00"):null,a:r.data_ativacao?new Date(r.data_ativacao+"T00:00:00"):null,obs:r.observacao_cancelamento||"",g:r.classificacao||"ok",l:r.motivo||"Outro motivo",cep:r.cep||"",cid:r.cidade||"",comp:r.complemento||"",n:1};
       o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null;
       S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||""};
       return o;
     });
-    save();
-    msg.textContent="";
-    populateAndRender();
+    save();msg.textContent="";populateAndRender();
     if(dropMsg)dropMsg.textContent="✓ Clientes carregados automaticamente";
   }catch(error){
     console.error("Erro ao carregar clientes:",error);
-    msg.textContent="Erro ao carregar os clientes: "+(error?.message||error);
-    if(dropMsg)dropMsg.textContent="⚠ Não foi possível carregar os clientes salvos — clique aqui para tentar importar o CSV";
+    const detail=error?.message||String(error);
+    msg.textContent="Erro ao carregar os clientes: "+detail;
+    if(dropMsg)dropMsg.textContent="⚠ Erro ao carregar a base: "+detail;
     $id("app").classList.add("hid");
   }
-}
-async function boot(){
+}async function boot(){
   $id("site").style.display="none";
   const {data,error}=await client.auth.getSession();
   if(error){console.error(error);return}
