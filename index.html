@@ -85,6 +85,12 @@ label,.s,small{color:#9aa8b3}
 #cnt b{color:#edf2f5}
 .t.ok{background:#163326!important;color:#8fe0ae!important}.t.pend{background:#3a2d14!important;color:#f2c56b!important}.t.ign{background:#263039!important;color:#b8c3ca!important}
 .g{background:#26323b!important;color:#edf2f5!important;border-color:#2a3640!important}
+</style><style id="contact-tabs">
+.contact-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.contact-tab{background:#111a21;color:#9aa8b3;border:1px solid #2a3640;border-radius:9px;padding:9px 14px;cursor:pointer;font:inherit;font-weight:650}
+.contact-tab:hover{border-color:#ff7a22;color:#edf2f5}
+.contact-tab.active{background:#ff7a22;color:#fff;border-color:#ff7a22}
+.contact-tab .tab-count{opacity:.8;margin-left:5px;font-size:12px}
 </style></head><body><style>
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0d1318}
 .login-card{width:min(420px,100%);background:#171f26;border:1px solid #2a3640;border-radius:18px;padding:28px;box-shadow:0 20px 60px #0006}
@@ -107,6 +113,14 @@ label,.s,small{color:#9aa8b3}
 <div class="box" id="drop" tabindex="0"><b>Solte o relatório CSV aqui ou clique para escolher</b><span>Formato do IXC, separado por ponto e vírgula</span><input type="file" id="file" accept=".csv,text/csv" class="hid"></div>
 <div id="app" class="hid">
 <div class="chips" id="chips"></div>
+<div class="contact-tabs" id="contactTabs" aria-label="Situação dos contatos">
+  <button type="button" class="contact-tab active" data-status="">Todos <span class="tab-count" data-count="todos">0</span></button>
+  <button type="button" class="contact-tab" data-status="novo">Novos <span class="tab-count" data-count="novo">0</span></button>
+  <button type="button" class="contact-tab" data-status="contatado">Contatados <span class="tab-count" data-count="contatado">0</span></button>
+  <button type="button" class="contact-tab" data-status="respondeu">Responderam <span class="tab-count" data-count="respondeu">0</span></button>
+  <button type="button" class="contact-tab" data-status="voltou">Voltaram 🧡 <span class="tab-count" data-count="voltou">0</span></button>
+  <button type="button" class="contact-tab" data-status="sem">Sem interesse <span class="tab-count" data-count="sem">0</span></button>
+</div>
 <div class="box" style="margin-top:12px"><div class="f">
 <div><label for="q">Buscar</label><input type="search" id="q" placeholder="Nome, telefone ou CEP"></div>
 <div><label for="cat">Motivo da saída</label><select id="cat"></select></div>
@@ -185,8 +199,9 @@ function populateAndRender(){
   $("#cid").innerHTML=`<option value="">Todas</option>`+opt([...new Set(D.map(o=>o.cid))].sort(),x=>`<option>${esc(x)}</option>`);
   $("#st").innerHTML=`<option value="">Todas</option>`+opt(ST,([v,l])=>`<option value="${v}">${l}</option>`);
   $("#tp").innerHTML=`<option value="ab">Alternar entre as 6 (teste A/B)</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
-  $("#app").classList.remove("hid");render();
+  $("#app").classList.remove("hid");updateContactTabs();render();
 }
+let activeStatus="";
 const stOf=o=>(S[o.k]||{}).s||"novo";
 const tplOf=o=>{const v=$("#tp").value;return T[v==="ab"?hash(o.k)%T.length:+v]};
 function filt(){
@@ -194,7 +209,8 @@ function filt(){
   const pe=$("#pe").checked,wz=$("#wz").checked;
   let r=D.filter(o=>{
     if(cat?o.l!==cat:!(o.g==="ok"||(pe&&o.g==="pend")))return false;
-    if((cid&&o.cid!==cid)||(st&&stOf(o)!==st)||(wz&&!o.tel))return false;
+    const statusFilter=activeStatus||st;
+    if((cid&&o.cid!==cid)||(statusFilter&&stOf(o)!==statusFilter)||(wz&&!o.tel))return false;
     if(q&&!(norm(o.nome).includes(q)||(qd&&(o.tel.includes(qd)||o.cep.replace(/\D/g,"").includes(qd)))))return false;
     if($("#jan").value){const x=mAgo(o.c);if(x===null||x<a||x>=b)return false}
     return true;
@@ -215,6 +231,7 @@ function render(){
   try{
     view=filt();
     $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
+    updateContactTabs();
     $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
       const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
       const msg=T.length?T[i%T.length][0]:"Mensagem";
@@ -233,6 +250,18 @@ function render(){
     $("#rows").innerHTML=`<tr><td colspan="5">O banco carregou os clientes, mas houve um erro ao montar a tabela. Recarregue a página.</td></tr>`;
   }
 }
+function updateContactTabs(){
+  const counts={todos:D.length,novo:0,contatado:0,respondeu:0,voltou:0,sem:0};
+  D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++});
+  Object.keys(counts).forEach(k=>{const el=document.querySelector('[data-count="'+k+'"]');if(el)el.textContent=counts[k].toLocaleString("pt-BR")});
+  document.querySelectorAll(".contact-tab").forEach(b=>b.classList.toggle("active",b.dataset.status===activeStatus));
+}
+document.querySelector("#contactTabs").addEventListener("click",e=>{
+  const b=e.target.closest(".contact-tab");if(!b)return;
+  activeStatus=b.dataset.status||"";
+  const st=$("#st");if(st)st.value=activeStatus;
+  shown=PAGE;updateContactTabs();render();
+});
 function stats(){
   const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>v.s==="respondeu"||v.s==="voltou").length,b=e.filter(v=>v.s==="voltou").length;
     return `<tr><td>${esc(t[0])}</td><td>${e.length}</td><td>${r}</td><td>${e.length?Math.round(100*r/e.length)+"%":"–"}</td><td>${b}</td></tr>`}).join("");
