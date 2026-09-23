@@ -272,10 +272,13 @@ $("#rows").addEventListener("click",e=>{
   const o=view[+b.dataset.i];if(!o)return;
   copyClientName(b);
 });
-$("#rows").addEventListener("change",e=>{
+$("#rows").addEventListener("change",async e=>{
   if(e.target.tagName!=="SELECT")return;
   const o=view[+e.target.dataset.i];if(!o)return;
-  mark(o,e.target.value,(S[o.k]||{}).t||tplOf(o)[0]);
+  const next=e.target.value;
+  await mark(o,next,(S[o.k]||{}).t||tplOf(o)[0]);
+  if(activeStatus) render();
+  else render();
   stats();
 });
 ["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
