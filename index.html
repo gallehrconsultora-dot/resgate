@@ -167,4 +167,40 @@ function populateAndRender(){
   $("#tp").innerHTML=`<option value="ab">Alternar entre as 6 (teste A/B)</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");render();
 }
-
+<script>
+(function(){
+const SUPABASE_URL="https://yynipczfoovyroelbwns.supabase.co";
+const SUPABASE_KEY="sb_publishable_Usme23106mFHvQ3iLdKsBw_1DWWvgAX";
+if(!window.supabase){document.querySelector("#loginMsg").textContent="Não foi possível carregar o serviço de login. Atualize a página.";return}
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+window.sb=client;
+const $id=id=>document.getElementById(id);
+async function openApp(){
+  $id("login").style.display="none";
+  document.getElementById("site").style.display="block";
+  await loadFromDb();
+}
+async function loadFromDb(){
+  const {data,error}=await client.from("clientes").select("*").order("data_cancelamento",{ascending:false});
+  if(error){$id("loginMsg").textContent="Login OK, mas não consegui acessar o banco. Verifique as permissões do Supabase.";console.error(error);return}
+  if(!data.length){$id("site").style.display="block";$id("loginMsg").textContent="Login realizado. Importe seu primeiro relatório CSV.";return}
+  D=data.map(r=>{const o={k:r.chave,dbid:r.id,nome:r.cliente,id:r.id_ixc||"",tel:r.telefone||"",c:r.data_cancelamento?new Date(r.data_cancelamento+"T00:00:00"):null,a:r.data_ativacao?new Date(r.data_ativacao+"T00:00:00"):null,obs:r.observacao_cancelamento||"",g:r.classificacao||"ok",l:r.motivo||"Outro motivo",cep:r.cep||"",cid:r.cidade||"",comp:r.complemento||"",n:1};o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null;S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||""};return o});
+  save();populateAndRender();
+}
+async function boot(){
+  $id("site").style.display="none";
+  const {data,error}=await client.auth.getSession();
+  if(error){console.error(error);return}
+  if(data.session){await openApp()}else{$id("login").style.display="flex"}
+}
+$id("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const msg=$id("loginMsg");msg.textContent="Entrando...";
+  const email=$id("email").value.trim(),password=$id("password").value;
+  const {error}=await client.auth.signInWithPassword({email,password});
+  if(error){msg.textContent=error.message==="Invalid login credentials"?"E-mail ou senha incorretos.":error.message;return}
+  msg.textContent="";await openApp();
+});
+boot();
+})();
+</script>
