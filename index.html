@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resgate de ex-clientes · Vem Pra Uno</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root{--bg:#f2f4f6;--cd:#fff;--tx:#14202b;--mu:#64717d;--br:#dde3e8;--ac:#ff6a13;--wa:#178a4c;--wr:#a86500;--ig:#7b8794}
+@media(prefers-color-scheme:dark){:root{--bg:#10171d;--cd:#19232b;--tx:#e9eef2;--mu:#93a1ad;--br:#2b3843;--wa:#3fbf7a;--wr:#e0a23a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 2px}p.s{margin:0 0 16px;color:var(--mu)}
+.box{background:var(--cd);border:1px solid var(--br);border-radius:10px;padding:14px;margin-bottom:12px}
+#drop{border:2px dashed var(--br);text-align:center;padding:34px 12px;cursor:pointer}#drop:hover,#drop.on{border-color:var(--ac)}
+#drop b{display:block;font-size:16px}#drop span{color:var(--mu)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{flex:1 1 150px;border:1px solid var(--br);border-radius:8px;padding:8px 12px;background:var(--cd)}
+.chip strong{display:block;font-size:22px}.chip small{color:var(--mu)}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+label{display:block;font-size:12px;color:var(--mu)}label.c{display:flex;gap:6px;align-items:center;color:var(--tx);font-size:13px;padding-bottom:8px}
+input[type=search],select{width:100%;padding:8px;border:1px solid var(--br);border-radius:6px;background:var(--bg);color:var(--tx);font:inherit}
+button,a.b{font:inherit;border:0;border-radius:6px;padding:8px 12px;cursor:pointer;background:var(--ac);color:#fff;text-decoration:none;display:inline-block}
+button.g{background:transparent;color:var(--tx);border:1px solid var(--br)}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse}th{text-align:left;font-size:12px;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--br)}
+td{padding:9px 8px;border-bottom:1px solid var(--br);vertical-align:top}td small{display:block;color:var(--mu)}
+.t{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid currentColor}.ok{color:var(--wa)}.pend{color:var(--wr)}.ign{color:var(--ig)}
+a.wa{background:var(--wa);white-space:nowrap}a.wa.off{background:var(--ig);pointer-events:none;opacity:.5}
+td select{padding:5px;width:auto}.hid{display:none}
+details summary{cursor:pointer;font-weight:600}
+</style></head><body><main>
+<h1>Resgate de ex-clientes</h1>
+<p class="s">Carregue o relatório do IXC. Tudo roda no seu navegador: nenhum dado sai do seu computador.</p>
+<div class="box" id="drop" tabindex="0"><b>Solte o relatório CSV aqui ou clique para escolher</b><span>Formato do IXC, separado por ponto e vírgula</span><input type="file" id="file" accept=".csv,text/csv" class="hid"></div>
+<div id="app" class="hid">
+<div class="chips" id="chips"></div>
+<div class="box" style="margin-top:12px"><div class="f">
+<div><label for="q">Buscar</label><input type="search" id="q" placeholder="Nome, telefone ou CEP"></div>
+<div><label for="cat">Motivo da saída</label><select id="cat"></select></div>
+<div><label for="jan">Quando cancelou</label><select id="jan"><option value="">Qualquer época</option><option value="0-6">Últimos 6 meses</option><option value="6-12">Há 6 a 12 meses</option><option value="12-24">Há 1 a 2 anos</option><option value="24-999">Há mais de 2 anos</option></select></div>
+<div><label for="cid">Cidade</label><select id="cid"></select></div>
+<div><label for="st">Situação do contato</label><select id="st"></select></div>
+<div><label for="ord">Ordenar por</label><select id="ord"><option value="rec">Cancelou mais recentemente</option><option value="ant">Cancelou há mais tempo</option><option value="ten">Mais tempo como cliente</option><option value="nom">Nome (A–Z)</option></select></div>
+<div><label for="tp">Mensagem do WhatsApp</label><select id="tp"></select></div>
+<div><label class="c"><input type="checkbox" id="pe"> Incluir quem saiu com pendência</label><label class="c"><input type="checkbox" id="wz" checked> Só com WhatsApp válido</label></div>
+</div></div>
+<div class="box"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span id="cnt"></span><button class="g" id="exp">Baixar lista filtrada (CSV)</button></div>
+<div class="tw"><table><thead><tr><th>Cliente</th><th>Cancelamento</th><th>Motivo</th><th>Contato</th><th>WhatsApp</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p style="text-align:center"><button class="g hid" id="more">Mostrar mais</button></p></div>
+<details class="box"><summary>Resultado por mensagem (teste A/B)</summary><div id="stats" style="margin-top:8px"></div></details>
+</div>
+<script>
+const $=s=>document.querySelector(s),now=new Date(),PAGE=100;
+const T=[["Natural","{n}, aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVi que você já foi nosso cliente e estou entrando em contato porque estamos com algumas condições especiais para quem deseja voltar para a Uno.\n\nQueria saber: como está sua internet atualmente? 😊"],
+["Curiosidade","Oi, {n}! Aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVi que você já teve internet com a gente e queria te contar que estamos com uma condição especial para alguns ex-clientes.\n\nPosso te contar rapidinho? 😊"],
+["Motivo da saída","Oi, {n}! Aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVi que você já foi nosso cliente e estamos fazendo uma ação de retorno.\n\nPosso te perguntar uma coisa? O que fez você trocar de internet na época?"],
+["Condição de retorno","{n}, aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVocê já fez parte da Uno e estamos com uma condição especial para quem está pensando em voltar.\n\nHoje você consideraria retornar para a gente?"],
+["Sem pressão","Oi, {n}! Aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVi que você já foi cliente da Uno e estamos com uma condição especial de retorno.\n\nNão sei se você está pensando em trocar de internet agora, mas posso te apresentar a condição e você vê se faz sentido para você. 😊"],
+["Descoberta","Oi, {n}! Aqui é a Nicole, da Vem Pra Uno! 🧡\n\nVocê já conhece a Uno, então queria entender como está sua experiência com a internet atualmente.\n\nO que você mais valoriza hoje: preço, velocidade ou estabilidade?"]];
+const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"]];
+// motivo da saída: [grupo, rótulo, regex] — a primeira que casar vale. ok = pode contatar, pend = pendência financeira, ign = provavelmente ainda é cliente / não contatar
+const R=[["ign","Teste ou duplicidade",/\bteste\b|duplic/],["ign","Falecimento",/falec|obito/],["ign","Troca de titularidade",/titular|antigo:.*novo:/],
+["ign","Migração ou upgrade (provável cliente ativo)",/migra|migrou|upgrade|uograde|\bup\b|downgrade|alteracao de plano|troca de plano|mudanca de plano|adicional|plano do hexa|ajuste de contrato|comodato (vinculado|ajustado|inserido)|sem comodato|sem roteador|dobro|\d+ ?mb/],
+["ok","Saída sem pendências",/sem debitos/],["pend","Inadimplência ou débito",/inadimpl|inandimpl|falta de pagamento|debito|negativ|cobranca|fechamento em massa|limpeza de base|pendente|nao retirad|sem sucesso|boleto/],
+["ok","Mudou de endereço",/mudou|mudanca|mudar|nao mora|medanca|morar em|troca de endereco/],["ok","Foi para outro provedor",/outro provedor|outra operadora|trocou de operadora|concorr|outra empresa/],
+["ok","Insatisfação com o serviço",/insatisf|lentid|instabil|queda|sem sinal|qualidade|atendimento|sem conexao|nao funcion|problema/],["ok","Preço ou dificuldade financeira",/preco|caro|custos|desempreg|covid|pandemia|dificuldade/],
+["ok","Sem viabilidade técnica",/viabilidade|cobertura|sem poste/],["ok","Desistência ou pedido do cliente",/desist|solicit|pedido|rescis|rescind|reincid|pelo usuario|nao instalou|nao chegou/],
+["ok","Saída sem pendências",/equipamento|retirad|entregue|comodato/]];
+const norm=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pdt=s=>{const m=/^(\d\d)\/(\d\d)\/(\d{4})/.exec(s||"");return!m||+m[3]<2015?null:new Date(+m[3],m[2]-1,+m[1])};
+const fd=d=>d?d.toLocaleDateString("pt-BR"):"data inválida";
+const mAgo=d=>d?(now-d)/2.63e9:null;
+const cls=o=>{const t=norm(o);for(const[g,l,r]of R)if(r.test(t))return[g,l];return["ok",t.replace(/[\s.,]/g,"")?"Outro motivo":"Motivo não informado"]};
+const phone=r=>{for(const v of[r["Telefone celular"],r["Telefone residencial"]]){let d=(v||"").replace(/\D/g,"");if(d.length===10&&/^[6-9]/.test(d.slice(2)))d=d.slice(0,2)+"9"+d.slice(2);if(d.length===11&&d[2]==="9")return d}return""};
+const fmt=d=>d?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:"";
+const first=n=>{const w=n.trim().split(/\s+/)[0].toLowerCase();return w.charAt(0).toUpperCase()+w.slice(1)};
+const hash=s=>[...s].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
+let D=[],view=[],shown=PAGE,S={};
+try{S=JSON.parse(localStorage.getItem("uno-status")||"{}")}catch(e){}
+const save=()=>{try{localStorage.setItem("uno-status",JSON.stringify(S))}catch(e){}};
+
+function build(rows){
+  const m=new Map();
+  for(const r of rows){
+    const nome=(r.Cliente||"").trim();if(!nome)continue;
+    const k=norm(nome).replace(/\s+/g," "),obs=(r["Obs. cancelamento"]||"").trim(),[g,l]=cls(obs);
+    const o={k,nome,id:(r.ID||"").replace(/[^0-9]/g,""),c:pdt(r["Data cancelamento"]),a:pdt(r["Data ativação"]),obs,g,l,cep:r.CEP||"",cid:r.Cidade||"",comp:r.Complemento||"",tel:phone(r),n:1};
+    const p=m.get(k);
+    if(!p)m.set(k,o);
+    else if(!p.c||(o.c&&o.c>=p.c)){o.n=p.n+1;o.tel=o.tel||p.tel;m.set(k,o)}
+    else{p.n++;p.tel=p.tel||o.tel}
+  }
+  D=[...m.values()];
+  D.forEach(o=>{o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null});
+  const cnt=g=>D.filter(o=>o.g===g).length;
+  $("#chips").innerHTML=[["Clientes no relatório",D.length],["Pode contatar",cnt("ok")],["Saiu com pendência",cnt("pend")],["Provável cliente ativo",cnt("ign")]].map(([a,b])=>`<div class="chip"><strong>${b.toLocaleString("pt-BR")}</strong><small>${a}</small></div>`).join("");
+  const opt=(a,f)=>a.map(f).join("");
+  const labs=[...new Set(D.map(o=>o.l))].sort();
+  $("#cat").innerHTML=`<option value="">Todos que posso contatar</option>`+opt(labs,l=>`<option>${esc(l)}</option>`);
+  $("#cid").innerHTML=`<option value="">Todas</option>`+opt([...new Set(D.map(o=>o.cid))].sort(),c=>`<option>${esc(c)}</option>`);
+  $("#st").innerHTML=`<option value="">Todas</option>`+opt(ST,([v,l])=>`<option value="${v}">${l}</option>`);
+  $("#tp").innerHTML=`<option value="ab">Alternar entre as 6 (teste A/B)</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
+  $("#app").classList.remove("hid");render();
+}
+const stOf=o=>(S[o.k]||{}).s||"novo";
+const tplOf=o=>{const v=$("#tp").value;return T[v==="ab"?hash(o.k)%T.length:+v]};
+function filt(){
+  const q=norm($("#q").value),qd=q.replace(/\D/g,""),cat=$("#cat").value,cid=$("#cid").value,st=$("#st").value,[a,b]=($("#jan").value||"").split("-").map(Number);
+  const pe=$("#pe").checked,wz=$("#wz").checked;
+  let r=D.filter(o=>{
+    if(cat?o.l!==cat:!(o.g==="ok"||(pe&&o.g==="pend")))return false;
+    if(cid&&o.cid!==cid||st&&stOf(o)!==st||wz&&!o.tel)return false;
+    if(q&&!(norm(o.nome).includes(q)||(qd&&(o.tel.includes(qd)||o.cep.replace(/\D/g,"").includes(qd)))))return false;
+    if($("#jan").value){const x=mAgo(o.c);if(x===null||x<a||x>=b)return false}
+    return true});
+  const z=$("#ord").value,cv=o=>o.c?+o.c:0;
+  r.sort(z==="ant"?(x,y)=>(cv(x)||9e15)-(cv(y)||9e15):z==="ten"?(x,y)=>(y.ten||0)-(x.ten||0):z==="nom"?(x,y)=>x.nome.localeCompare(y.nome,"pt-BR"):(x,y)=>cv(y)-cv(x));
+  return r}
+function render(){
+  view=filt();
+  $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
+  $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
+    const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
+    const t=tplOf(o),msg=t[1].replace("{n}",first(o.nome));
+    return `<tr><td><b>${esc(o.nome)}</b><small>Contrato ${o.id}${o.n>1?` · ${o.n} contratos`:""}${o.ten!==null?` · ficou ${o.ten} meses`:""}</small><small>${esc(o.cid)} · CEP ${esc(o.cep)}${o.comp?" · "+esc(o.comp):""}</small></td>
+<td>${fd(o.c)}<small>${ago}</small></td>
+<td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc(o.obs.split("\n")[0].slice(0,80))}</small></td>
+<td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
+<td>${o.tel?`<a class="b wa" data-i="${i}" target="_blank" rel="noopener" href="https://wa.me/55${o.tel}?text=${encodeURIComponent(msg)}">${fmt(o.tel)}</a><small>Modelo: ${t[0]}</small>`:`<a class="b wa off">Sem WhatsApp</a>`}</td></tr>`}).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Tente ampliar a época ou o motivo.</td></tr>`;
+  $("#more").classList.toggle("hid",view.length<=shown);
+  stats()}
+function stats(){
+  const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>v.s==="respondeu"||v.s==="voltou").length,b=e.filter(v=>v.s==="voltou").length;
+    return `<tr><td>${t[0]}</td><td>${e.length}</td><td>${r}</td><td>${e.length?Math.round(100*r/e.length)+"%":"–"}</td><td>${b}</td></tr>`}).join("");
+  $("#stats").innerHTML=`<div class="tw"><table><thead><tr><th>Mensagem</th><th>Contatados</th><th>Responderam</th><th>Taxa de resposta</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s">O registro fica salvo neste navegador. Ao clicar no WhatsApp de um cliente "Novo", ele passa para "Contatado" com o modelo usado.</p>`}
+function mark(o,s,t){const p=S[o.k]||{};S[o.k]={s,t:t||p.t||"",d:new Date().toISOString().slice(0,10)};save()}
+$("#rows").addEventListener("click",e=>{const a=e.target.closest("a.wa");if(!a||a.classList.contains("off"))return;const o=view[+a.dataset.i];if(stOf(o)==="novo"){mark(o,"contatado",tplOf(o)[0]);setTimeout(render,300)}});
+$("#rows").addEventListener("change",e=>{if(e.target.tagName!=="SELECT")return;const o=view[+e.target.dataset.i];mark(o,e.target.value,(S[o.k]||{}).t||tplOf(o)[0]);if($("#st").value)render();else stats()});
+["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>$("#"+id).addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()}));
+$("#more").onclick=()=>{shown+=PAGE;render()};
+$("#exp").onclick=()=>{const h=["Cliente","Telefone","Cidade","CEP","Data cancelamento","Motivo","Detalhe","Situação","Mensagem"];
+  const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\s+/g," ")}"`;
+  const l=view.map(o=>[o.nome,fmt(o.tel),o.cid,o.cep,fd(o.c),o.l,o.obs,(ST.find(s=>s[0]===stOf(o))||[])[1],(S[o.k]||{}).t||""].map(q).join(";"));
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+[h.map(q).join(";"),...l].join("\r\n")],{type:"text/csv"}));a.download="ex-clientes-filtrado.csv";a.click()};
+const drop=$("#drop"),inp=$("#file");
+const load=f=>f&&Papa.parse(f,{header:true,delimiter:";",skipEmptyLines:true,complete:r=>build(r.data)});
+drop.onclick=()=>inp.click();drop.onkeydown=e=>{if(e.key==="Enter")inp.click()};inp.onchange=()=>load(inp.files[0]);
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("on")};drop.ondragleave=()=>drop.classList.remove("on");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("on");load(e.dataTransfer.files[0])};
+</script></main></body></html>
