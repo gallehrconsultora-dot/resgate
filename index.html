@@ -146,8 +146,10 @@ async function build(rows){
   D.forEach(o=>o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null);
   if(window.sb && D.length){
     const payload=D.map(o=>({chave:o.k,cliente:o.nome,id_ixc:o.id||null,telefone:o.tel||null,cidade:o.cid||null,cep:o.cep||null,complemento:o.comp||null,data_ativacao:o.a?o.a.toISOString().slice(0,10):null,data_cancelamento:o.c?o.c.toISOString().slice(0,10):null,motivo:o.l,observacao_cancelamento:o.obs||null,classificacao:o.g}));
-    const {error}=await sb.from("clientes").upsert(payload,{onConflict:"chave"});
+    const {data:saved,error}=await sb.from("clientes").upsert(payload,{onConflict:"chave"}).select("id,chave,status_recuperacao,modelo_abordagem");
     if(error){console.error(error);$("#loginMsg").textContent="Não foi possível salvar o relatório no banco.";return}
+    const byKey=new Map((saved||[]).map(r=>[r.chave,r]));
+    D.forEach(o=>{const r=byKey.get(o.k);if(r){o.dbid=r.id;S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||""}}});save();
   }
   populateAndRender();
 }
