@@ -143,6 +143,7 @@ label,.s,small{color:#9aa8b3}
 </div>
 <script>
 const $=s=>document.querySelector(s),now=new Date(),PAGE=100;
+const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"],["semretorno","Sem retorno"],["semcontato","Sem formas de contato"],["debito","Deixou débitos"]];
 const T=[
 ["contato_ex_cliente","{n}, vi que você já foi nosso cliente e resolvi te chamar.\n\nComo está sua internet hoje, {n}? Está dando tudo certo por aí?"],
 ["condicao_especial","Temos uma condição especial para ex-clientes e seu cadastro apareceu para mim, {n}.\n\nVocê teria interesse em voltar para a Vem Pra Uno?"]
@@ -185,7 +186,6 @@ function populateAndRender(){
   $("#tp").innerHTML=`<option value="">Selecione o template usado</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");updateContactTabs();render();
 }
-const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"],["semretorno","Sem retorno"],["semcontato","Sem formas de contato"],["debito","Deixou débitos"]];
 let activeStatus="";
 const stOf=o=>(S[o.k]||{}).s||"novo";
 const tplOf=o=>{const v=$("#tp").value;return T[v===""?0:+v]};
@@ -318,7 +318,8 @@ async function loadFromDb(){
     populateAndRender();
   }catch(error){
     console.error("Erro ao carregar clientes:",error);
-    msg.textContent="Não consegui carregar os clientes salvos. Atualize a página e tente novamente.";
+    msg.textContent="Erro ao carregar os clientes: "+(error?.message||error);
+    $id("app").classList.add("hid");
   }
 }
 async function boot(){
