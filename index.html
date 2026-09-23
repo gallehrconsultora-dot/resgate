@@ -122,6 +122,7 @@ label,.s,small{color:#9aa8b3}
   <button type="button" class="contact-tab" data-status="respondeu">Responderam <span class="tab-count" data-count="respondeu">0</span></button>
   <button type="button" class="contact-tab" data-status="voltou">Voltaram 🧡 <span class="tab-count" data-count="voltou">0</span></button>
   <button type="button" class="contact-tab" data-status="sem">Sem interesse <span class="tab-count" data-count="sem">0</span></button>
+  <button type="button" class="contact-tab" data-status="semretorno">Sem retorno <span class="tab-count" data-count="semretorno">0</span></button>
   <button type="button" class="contact-tab" data-status="semcontato">Sem formas de contato <span class="tab-count" data-count="semcontato">0</span></button>
   <button type="button" class="contact-tab" data-status="debito">Deixou débitos <span class="tab-count" data-count="debito">0</span></button>
 </div>
@@ -242,7 +243,7 @@ function render(){
   }
 }
 function updateContactTabs(){
-  const counts={todos:0,novo:0,contatado:0,respondeu:0,voltou:0,sem:0,semcontato:0,debito:0};
+  const counts={todos:0,novo:0,contatado:0,respondeu:0,voltou:0,sem:0,semretorno:0,semcontato:0,debito:0};
   D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++}); counts.todos=D.length;
   Object.keys(counts).forEach(k=>{const el=document.querySelector('[data-count="'+k+'"]');if(el)el.textContent=counts[k].toLocaleString("pt-BR")});
   document.querySelectorAll(".contact-tab").forEach(b=>b.classList.toggle("active",b.dataset.status===activeStatus));
@@ -254,7 +255,7 @@ document.querySelector("#contactTabs").addEventListener("click",e=>{
   shown=PAGE;updateContactTabs();render();
 });
 function stats(){
-  const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>v.s==="respondeu"||v.s==="voltou").length,b=e.filter(v=>v.s==="voltou").length;
+  const rows=T.map(t=>{const e=Object.values(S).filter(v=>v.t===t[0]&&v.s!=="novo"),r=e.filter(v=>["respondeu","voltou","sem"].includes(v.s)).length,b=e.filter(v=>v.s==="voltou").length;
     return `<tr><td>${esc(t[0])}</td><td>${e.length}</td><td>${r}</td><td>${e.length?Math.round(100*r/e.length)+"%":"–"}</td><td>${b}</td></tr>`}).join("");
   $("#stats").innerHTML=`<div class="tw"><table><thead><tr><th>Mensagem</th><th>Contatados</th><th>Responderam</th><th>Taxa de resposta</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s">Os status ficam salvos no Supabase. Ao clicar em "Copiar nome", o nome vai para a área de transferência.</p>`;
 }
