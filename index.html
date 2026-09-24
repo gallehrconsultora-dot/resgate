@@ -222,13 +222,19 @@ function filt(){
 }
 async function mark(o,s,t){
   const previous={...(S[o.k]||{s:"novo"})};
-  const now=new Date().toISOString();
+  const template=t||previous.t||"";
   const contacted=["contatado","respondeu","sem","voltou","semretorno"].includes(s);
+  if(contacted&&!template){
+    alert("Antes de registrar o contato, selecione o template usado.");
+    render();
+    return false;
+  }
+  const now=new Date().toISOString();
   const contactDate=previous.d||(contacted?now:"");
-  S[o.k]={s,t:t||previous.t||"",d:contactDate};save();render();stats();
+  S[o.k]={s,t:template,d:contactDate};save();render();stats();
   if(!window.sb||!o.dbid)return true;
   try{
-    const payload={status_recuperacao:s,modelo_abordagem:t||previous.t||"",atualizado_em:now};
+    const payload={status_recuperacao:s,modelo_abordagem:template,atualizado_em:now};
     if(contacted&&!previous.d)payload.ultimo_contato_at=now;
     const {error}=await sb.from("clientes").update(payload).eq("id",o.dbid);
     if(error)throw error;
