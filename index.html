@@ -94,6 +94,18 @@ label,.s,small{color:#9aa8b3}
 .contact-tab .tab-count{opacity:.8;margin-left:5px;font-size:12px}
 </style><style id="status-save-feedback">
 #saveStatus{position:fixed;right:18px;bottom:18px;z-index:9999;background:#171f26;color:#edf2f5;border:1px solid #2a3640;border-radius:10px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;font-weight:650}
+</style><style id="recovery-details">
+.modal-backdrop{position:fixed;inset:0;background:#0009;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px}
+.modal-backdrop.hid{display:none}
+.modal-card{width:min(620px,100%);max-height:90vh;overflow:auto;background:#171f26;border:1px solid #2a3640;border-radius:16px;padding:20px;box-shadow:0 24px 80px #0009}
+.modal-card h2{margin:0 0 4px}.modal-card .s{margin-bottom:16px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modal-grid .full{grid-column:1/-1}
+.modal-card textarea{width:100%;min-height:90px;resize:vertical;padding:10px;border:1px solid #2a3640;border-radius:9px;background:#111a21;color:#edf2f5;font:inherit}
+.modal-card input[type=text],.modal-card input[type=date]{width:100%;padding:10px;border:1px solid #2a3640;border-radius:9px;background:#111a21;color:#edf2f5;font:inherit}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.detail-btn{margin-top:6px;background:#26323b!important;color:#edf2f5!important;border:1px solid #2a3640!important}
+.next-contact{color:#ffb178!important;margin-top:4px}
+@media(max-width:620px){.modal-grid{grid-template-columns:1fr}}
 </style></head><body><style>
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0d1318}
 .login-card{width:min(420px,100%);background:#171f26;border:1px solid #2a3640;border-radius:18px;padding:28px;box-shadow:0 20px 60px #0006}
@@ -121,6 +133,8 @@ label,.s,small{color:#9aa8b3}
   <button type="button" class="contact-tab" data-status="novo">Novos <span class="tab-count" data-count="novo">0</span></button>
   <button type="button" class="contact-tab" data-status="contatado">Contatados <span class="tab-count" data-count="contatado">0</span></button>
   <button type="button" class="contact-tab" data-status="respondeu">Responderam <span class="tab-count" data-count="respondeu">0</span></button>
+  <button type="button" class="contact-tab" data-status="negociando">Em negociação <span class="tab-count" data-count="negociando">0</span></button>
+  <button type="button" class="contact-tab" data-status="retornar">Retornar depois <span class="tab-count" data-count="retornar">0</span></button>
   <button type="button" class="contact-tab" data-status="voltou">Voltaram 🧡 <span class="tab-count" data-count="voltou">0</span></button>
   <button type="button" class="contact-tab" data-status="sem">Sem interesse <span class="tab-count" data-count="sem">0</span></button>
   <button type="button" class="contact-tab" data-status="semretorno">Sem retorno <span class="tab-count" data-count="semretorno">0</span></button>
@@ -143,9 +157,37 @@ label,.s,small{color:#9aa8b3}
 <p style="text-align:center"><button class="g hid" id="more">Mostrar mais</button></p></div>
 </div><div id="statsPanel" class="box hid"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><h2 style="margin:0">Resultados por template</h2><p class="s" style="margin:4px 0 0">Taxa de retorno com base nos clientes que receberam cada template.</p></div></div><div id="stats" style="margin-top:14px"></div></div>
 </div>
+<div id="detailModal" class="modal-backdrop hid" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+  <div class="modal-card">
+    <h2 id="detailTitle">Detalhes da recuperação</h2>
+    <p class="s" id="detailClient"></p>
+    <div class="modal-grid">
+      <div class="full"><label for="detailMotivo">Motivo / retorno do cliente</label><select id="detailMotivo"></select></div>
+      <div><label for="detailOperadora">Operadora atual</label><input id="detailOperadora" type="text" placeholder="Ex.: Claro, Vivo, TIM..."></div>
+      <div><label for="detailInteresse">Interesse em voltar</label><select id="detailInteresse"><option value="">Não informado</option><option value="sim">Sim</option><option value="talvez">Talvez / futuramente</option><option value="nao">Não</option></select></div>
+      <div><label for="detailProximo">Próximo contato</label><input id="detailProximo" type="date"></div>
+      <div class="full"><label for="detailObs">Observação da conversa</label><textarea id="detailObs" placeholder="Registre o que o cliente explicou, objeções e próximos passos."></textarea></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="g" id="detailCancel">Cancelar</button><button type="button" id="detailSave">Salvar detalhes</button></div>
+  </div>
+</div>
 <script>
 const $=s=>document.querySelector(s),now=new Date(),PAGE=100;
-const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["voltou","Voltou 🧡"],["sem","Sem interesse"],["semretorno","Sem retorno"],["semcontato","Sem formas de contato"],["debito","Deixou débitos"]];
+const ST=[["novo","Novo"],["contatado","Contatado"],["respondeu","Respondeu"],["negociando","Em negociação"],["retornar","Retornar depois"],["voltou","Voltou 🧡"],["sem","Sem interesse"],["semretorno","Sem retorno"],["semcontato","Sem formas de contato"],["debito","Deixou débitos"]];
+const MOTIVOS_RESPOSTA=[
+["satisfeito_atual","Satisfeito com a operadora atual"],
+["preco","Preço"],
+["fidelidade","Fidelidade com outra operadora"],
+["experiencia_ruim","Experiência ruim anterior com a Uno"],
+["nao_quer_agora","Não quer trocar agora"],
+["mudou_endereco","Mudou de endereço"],
+["sem_cobertura","Sem cobertura / viabilidade"],
+["debito","Débito ou pendência"],
+["quer_analisar","Quer analisar / pensar"],
+["demonstrou_interesse","Demonstrou interesse"],
+["outro","Outro"]
+];
+const MOTIVO_LABEL=Object.fromEntries(MOTIVOS_RESPOSTA);
 const T=[
 ["contato_ex_cliente","{n}, vi que você já foi nosso cliente e resolvi te chamar.\n\nComo está sua internet hoje, {n}? Está dando tudo certo por aí?"],
 ["condicao_especial","Temos uma condição especial para ex-clientes e seu cadastro apareceu para mim, {n}.\n\nVocê teria interesse em voltar para a Vem Pra Uno?"]
@@ -175,10 +217,10 @@ async function build(rows){
   D.forEach(o=>o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null);
   if(window.sb && D.length){
     const payload=D.map(o=>({chave:o.k,cliente:o.nome,id_ixc:o.id||null,telefone:o.tel||null,cidade:o.cid||null,cep:o.cep||null,complemento:o.comp||null,data_ativacao:o.a?o.a.toISOString().slice(0,10):null,data_cancelamento:o.c?o.c.toISOString().slice(0,10):null,motivo:o.l,observacao_cancelamento:o.obs||null,classificacao:o.g}));
-    const {data:saved,error}=await sb.from("clientes").upsert(payload,{onConflict:"chave"}).select("id,chave,status_recuperacao,modelo_abordagem");
+    const {data:saved,error}=await sb.from("clientes").upsert(payload,{onConflict:"chave"}).select("id,chave,status_recuperacao,modelo_abordagem,ultimo_contato_at,motivo_resposta,operadora_atual,interesse,proximo_contato_em,observacao_interna");
     if(error){console.error(error);$("#loginMsg").textContent="Não foi possível salvar o relatório no banco.";return}
     const byKey=new Map((saved||[]).map(r=>[r.chave,r]));
-    D.forEach(o=>{const r=byKey.get(o.k);if(r){o.dbid=r.id;S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||"",d:r.ultimo_contato_at||S[o.k]?.d||""}}});save();
+    D.forEach(o=>{const r=byKey.get(o.k);if(r){o.dbid=r.id;S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||"",d:r.ultimo_contato_at||S[o.k]?.d||"",motivo:r.motivo_resposta||"",operadora:r.operadora_atual||"",interesse:r.interesse||"",proximo:r.proximo_contato_em||"",obs:r.observacao_interna||""}}});save();
   }
   populateAndRender();
 }
@@ -223,7 +265,7 @@ function filt(){
 async function mark(o,s,t){
   const previous={...(S[o.k]||{s:"novo"})};
   const template=t||previous.t||"";
-  const contacted=["contatado","respondeu","sem","voltou","semretorno"].includes(s);
+  const contacted=["contatado","respondeu","negociando","retornar","sem","voltou","semretorno"].includes(s);
   if(contacted&&!template){
     alert("Antes de registrar o contato, selecione o template usado.");
     render();
@@ -231,7 +273,7 @@ async function mark(o,s,t){
   }
   const now=new Date().toISOString();
   const contactDate=previous.d||(contacted?now:"");
-  S[o.k]={s,t:template,d:contactDate};save();render();stats();
+  S[o.k]={...previous,s,t:template,d:contactDate};save();render();stats();
   if(!window.sb||!o.dbid)return true;
   try{
     const payload={status_recuperacao:s,modelo_abordagem:template,atualizado_em:now};
@@ -256,9 +298,9 @@ function render(){
       return `<tr>
         <td><b>${esc(o.nome)}</b><small>Contrato ${esc(o.id||"—")}${o.n>1?` · ${o.n} contratos`:""}${o.ten!==null?` · ficou ${o.ten} meses`:""}</small><small>${esc(o.cid)} · CEP ${esc(o.cep)}${o.comp?" · "+esc(o.comp):""}</small></td>
         <td>${fd(o.c)}<small>${ago}</small></td>
-        <td>${(S[o.k]||{}).d?fd(new Date((S[o.k]||{}).d+"T00:00:00")):"—"}<small>${(S[o.k]||{}).d?"Contato realizado":"Ainda não contatado"}</small></td>
+        <td>${(S[o.k]||{}).d?fd(new Date((S[o.k]||{}).d)):"—"}<small>${(S[o.k]||{}).d?"Contato realizado":"Ainda não contatado"}</small></td>
         <td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc((o.obs||"").split("\n")[0].slice(0,80))}</small></td>
-        <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select></td>
+        <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select>${(S[o.k]||{}).proximo?`<small class="next-contact">Retomar em ${fd(new Date((S[o.k]||{}).proximo+"T00:00:00"))}</small>`:""}</td>
         <td>
   <button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button>
   <select class="row-template" data-i="${i}" aria-label="Template usado no contato">
@@ -266,6 +308,7 @@ function render(){
     ${T.map(([v,l])=>`<option value="${esc(v)}"${((S[o.k]||{}).t===v)?" selected":""}>${esc(v)}</option>`).join("")}
   </select>
   <small>Template salvo: ${esc((S[o.k]||{}).t||"nenhum")}</small>
+  <button type="button" class="g detail-btn" data-i="${i}">📝 Detalhes do retorno</button>
 </td>
       </tr>`;
     }).join("")||`<tr><td colspan="5">Nenhum cliente com esses filtros. Desmarque "Só com WhatsApp válido" ou amplie os filtros.</td></tr>`;
@@ -277,7 +320,7 @@ function render(){
   }
 }
 function updateContactTabs(){
-  const counts={todos:0,novo:0,contatado:0,respondeu:0,voltou:0,sem:0,semretorno:0,semcontato:0,debito:0};
+  const counts={todos:0,novo:0,contatado:0,respondeu:0,negociando:0,retornar:0,voltou:0,sem:0,semretorno:0,semcontato:0,debito:0};
   D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++}); counts.todos=D.length;
   Object.keys(counts).forEach(k=>{const el=document.querySelector('[data-count="'+k+'"]');if(el)el.textContent=counts[k].toLocaleString("pt-BR")});
   document.querySelectorAll(".contact-tab").forEach(b=>b.classList.toggle("active",b.dataset.status===activeStatus));
@@ -296,27 +339,78 @@ document.querySelector("#contactTabs").addEventListener("click",e=>{
 });
 function stats(){
   const all=Object.values(S);
-  // Só consideramos "chamado" quem saiu de Novo e entrou em uma situação de contato.
-  // Assim, apenas escolher um template antecipadamente não conta como mensagem enviada.
-  const contacted=["contatado","respondeu","sem","voltou","semretorno"];
+  const contacted=["contatado","respondeu","negociando","retornar","sem","voltou","semretorno"];
+  const responded=["respondeu","negociando","retornar","sem","voltou"];
+  const isInterested=v=>["negociando","retornar","voltou"].includes(v.s)||v.interesse==="sim";
+  const valid=all.filter(v=>v.t&&contacted.includes(v.s));
+  const respostas=valid.filter(v=>responded.includes(v.s));
+  const interessados=valid.filter(isInterested);
+  const voltaram=valid.filter(v=>v.s==="voltou");
+  const taxaResp=valid.length?Math.round(100*respostas.length/valid.length):0;
+  const taxaInter=respostas.length?Math.round(100*interessados.length/respostas.length):0;
+  const taxaConv=valid.length?Math.round(100*voltaram.length/valid.length):0;
   const rows=T.map(t=>{
-    const e=all.filter(v=>v.t===t[0]&&contacted.includes(v.s));
-    const ret=e.filter(v=>["respondeu","sem","voltou"].includes(v.s)).length;
-    const semret=e.filter(v=>v.s==="semretorno").length;
+    const e=valid.filter(v=>v.t===t[0]);
+    const ret=e.filter(v=>responded.includes(v.s)).length;
+    const inter=e.filter(isInterested).length;
     const voltou=e.filter(v=>v.s==="voltou").length;
     const taxa=e.length?Math.round(100*ret/e.length):0;
-    return `<tr><td><strong>${esc(t[0])}</strong></td><td>${e.length}</td><td>${ret}</td><td>${taxa}%</td><td>${semret}</td><td>${voltou}</td></tr>`;
+    return `<tr><td><strong>${esc(t[0])}</strong></td><td>${e.length}</td><td>${ret}</td><td>${taxa}%</td><td>${inter}</td><td>${voltou}</td></tr>`;
   }).join("");
-  const total=all.filter(v=>v.t&&contacted.includes(v.s)).length;
-  const ret=all.filter(v=>v.t&&contacted.includes(v.s)&&["respondeu","sem","voltou"].includes(v.s)).length;
-  const taxa=total?Math.round(100*ret/total):0;
-  $("#stats").innerHTML=`<div class="chips" style="margin-bottom:14px"><div class="chip"><strong>${total.toLocaleString("pt-BR")}</strong><small>Contatos realizados</small></div><div class="chip"><strong>${ret.toLocaleString("pt-BR")}</strong><small>Retornos</small></div><div class="chip"><strong>${taxa}%</strong><small>Taxa geral de retorno</small></div></div><div class="tw"><table><thead><tr><th>Template</th><th>Enviados</th><th>Retornos</th><th>Taxa de sucesso</th><th>Sem retorno</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div><p class="s" style="margin-top:10px">Enviado = cliente com status <strong>Contatado, Respondeu, Sem interesse, Voltou ou Sem retorno</strong> e template registrado. Retorno = <strong>Respondeu + Sem interesse + Voltou</strong>. "Sem formas de contato" e "Deixou débitos" ficam fora da taxa.</p>`;
+  const motiveCounts={};
+  all.forEach(v=>{if(v.motivo)motiveCounts[v.motivo]=(motiveCounts[v.motivo]||0)+1});
+  const motiveRows=Object.entries(motiveCounts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr><td>${esc(MOTIVO_LABEL[k]||k)}</td><td>${n}</td></tr>`).join("");
+  $("#stats").innerHTML=`<div class="chips" style="margin-bottom:14px">
+    <div class="chip"><strong>${valid.length.toLocaleString("pt-BR")}</strong><small>Contatos realizados</small></div>
+    <div class="chip"><strong>${respostas.length.toLocaleString("pt-BR")}</strong><small>Respostas</small></div>
+    <div class="chip"><strong>${taxaResp}%</strong><small>Taxa de resposta</small></div>
+    <div class="chip"><strong>${interessados.length.toLocaleString("pt-BR")}</strong><small>Com interesse</small></div>
+    <div class="chip"><strong>${taxaInter}%</strong><small>Interesse entre respostas</small></div>
+    <div class="chip"><strong>${taxaConv}%</strong><small>Recuperação sobre contatos</small></div>
+  </div>
+  <div class="tw"><table><thead><tr><th>Template</th><th>Enviados</th><th>Respostas</th><th>Taxa de resposta</th><th>Com interesse</th><th>Voltaram</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <h3 style="margin:20px 0 8px">Motivos registrados nas respostas</h3>
+  <div class="tw"><table><thead><tr><th>Motivo</th><th>Quantidade</th></tr></thead><tbody>${motiveRows||'<tr><td colspan="2">Nenhum motivo registrado ainda.</td></tr>'}</tbody></table></div>
+  <p class="s" style="margin-top:10px">Resposta = Respondeu, Em negociação, Retornar depois, Sem interesse ou Voltou. Interesse = Em negociação, Retornar depois, Voltou ou interesse marcado como “Sim”.</p>`;
 }
 $("#rows").addEventListener("click",e=>{
-  const b=e.target.closest("button.copy-name");if(!b)return;
-  const o=view[+b.dataset.i];if(!o)return;
-  copyClientName(b);
+  const copy=e.target.closest("button.copy-name");
+  if(copy){const o=view[+copy.dataset.i];if(o)copyClientName(copy);return}
+  const detail=e.target.closest("button.detail-btn");
+  if(detail){const o=view[+detail.dataset.i];if(o)openDetails(o)}
 });
+let activeDetail=null;
+function openDetails(o){
+  activeDetail=o;
+  const v=S[o.k]||{};
+  $("#detailClient").textContent=o.nome+" · "+((ST.find(x=>x[0]===stOf(o))||[])[1]||stOf(o));
+  $("#detailMotivo").innerHTML='<option value="">Selecione...</option>'+MOTIVOS_RESPOSTA.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("");
+  $("#detailMotivo").value=v.motivo||"";
+  $("#detailOperadora").value=v.operadora||"";
+  $("#detailInteresse").value=v.interesse||"";
+  $("#detailProximo").value=v.proximo||"";
+  $("#detailObs").value=v.obs||"";
+  $("#detailModal").classList.remove("hid");
+}
+function closeDetails(){activeDetail=null;$("#detailModal").classList.add("hid")}
+async function saveDetails(){
+  const o=activeDetail;if(!o)return;
+  const previous={...(S[o.k]||{})};
+  const next={...previous,motivo:$("#detailMotivo").value||"",operadora:$("#detailOperadora").value.trim(),interesse:$("#detailInteresse").value||"",proximo:$("#detailProximo").value||"",obs:$("#detailObs").value.trim()};
+  S[o.k]=next;save();render();stats();
+  try{
+    if(window.sb&&o.dbid){
+      const {error}=await sb.from("clientes").update({motivo_resposta:next.motivo||null,operadora_atual:next.operadora||null,interesse:next.interesse||null,proximo_contato_em:next.proximo||null,observacao_interna:next.obs||null,atualizado_em:new Date().toISOString()}).eq("id",o.dbid);
+      if(error)throw error;
+    }
+    closeDetails();
+  }catch(error){
+    console.error("Falha ao salvar detalhes:",error);S[o.k]=previous;save();render();stats();alert("Não foi possível salvar os detalhes. Tente novamente.");
+  }
+}
+$("#detailCancel").onclick=closeDetails;
+$("#detailSave").onclick=saveDetails;
+$("#detailModal").addEventListener("click",e=>{if(e.target.id==="detailModal")closeDetails()});
 async function saveTemplate(o,t){
   const previous={...(S[o.k]||{s:"novo"})};
   S[o.k]={...previous,t:t||""};save();render();stats();
@@ -331,14 +425,13 @@ async function saveTemplate(o,t){
     return false;
   }
 }
-$("#rows").addEventListener("change",e=>{
+$("#rows").addEventListener("change",async e=>{
   const o=view[+e.target.dataset.i];if(!o)return;
-  if(e.target.classList.contains("row-template")){
-    saveTemplate(o,e.target.value);
-    return;
-  }
+  if(e.target.classList.contains("row-template")){saveTemplate(o,e.target.value);return}
   if(e.target.tagName!=="SELECT")return;
-  mark(o,e.target.value,(S[o.k]||{}).t||"");
+  const status=e.target.value;
+  const ok=await mark(o,status,(S[o.k]||{}).t||"");
+  if(ok&&["respondeu","negociando","retornar","sem","voltou"].includes(status))openDetails(o);
 });
 ["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
   const el=$("#"+id);if(el)el.addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()});
@@ -347,7 +440,7 @@ $("#more").onclick=()=>{shown+=PAGE;render()};
 $("#exp").onclick=()=>{
   const h=["Cliente","Telefone","Cidade","CEP","Data cancelamento","Contato realizado","Motivo","Detalhe","Situação","Mensagem"];
   const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\s+/g," ")}"`;
-  const l=view.map(o=>[o.nome,fmt(o.tel),o.cid,o.cep,fd(o.c),((S[o.k]||{}).d||"")?fd(new Date((S[o.k]||{}).d+"T00:00:00")):"",o.l,o.obs,(ST.find(s=>s[0]===stOf(o))||[])[1],(S[o.k]||{}).t||""].map(q).join(";"));
+  const l=view.map(o=>[o.nome,fmt(o.tel),o.cid,o.cep,fd(o.c),((S[o.k]||{}).d||"")?fd(new Date((S[o.k]||{}).d)):"",o.l,o.obs,(ST.find(s=>s[0]===stOf(o))||[])[1],(S[o.k]||{}).t||""].map(q).join(";"));
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+[h.map(q).join(";"),...l].join("\r\n")],{type:"text/csv"}));a.download="ex-clientes-filtrado.csv";a.click();
 };
 </script>
@@ -381,7 +474,7 @@ async function loadFromDb(){
     D=data.map(r=>{
       const o={k:r.chave||("ixc:"+r.id_ixc),dbid:r.id,nome:r.cliente||"",id:r.id_ixc||"",tel:r.telefone||"",c:r.data_cancelamento?new Date(r.data_cancelamento+"T00:00:00"):null,a:r.data_ativacao?new Date(r.data_ativacao+"T00:00:00"):null,obs:r.observacao_cancelamento||"",g:r.classificacao||"ok",l:r.motivo||"Outro motivo",cep:r.cep||"",cid:r.cidade||"",comp:r.complemento||"",n:1};
       o.ten=o.a&&o.c?Math.round((o.c-o.a)/2.63e9):null;
-      S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||""};
+      S[o.k]={...(S[o.k]||{}),s:r.status_recuperacao||"novo",t:r.modelo_abordagem||S[o.k]?.t||"",d:r.ultimo_contato_at||"",motivo:r.motivo_resposta||"",operadora:r.operadora_atual||"",interesse:r.interesse||"",proximo:r.proximo_contato_em||"",obs:r.observacao_interna||""};
       return o;
     });
     save();msg.textContent="";populateAndRender();
