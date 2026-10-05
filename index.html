@@ -140,6 +140,7 @@ label,.s,small{color:#9aa8b3}
   <button type="button" class="contact-tab" data-status="semretorno">Sem retorno <span class="tab-count" data-count="semretorno">0</span></button>
   <button type="button" class="contact-tab" data-status="semcontato">Sem formas de contato <span class="tab-count" data-count="semcontato">0</span></button>
   <button type="button" class="contact-tab" data-status="debito">Deixou débitos <span class="tab-count" data-count="debito">0</span></button>
+  <button type="button" class="contact-tab" id="opportunitiesTab" data-status="__opportunities">🔥 Oportunidades <span class="tab-count" data-count="opportunities">0</span></button>
   <button type="button" class="contact-tab" id="resultsTab" data-status="__stats">📊 Resultados</button>
 </div>
 <div id="workArea"><div class="box" style="margin-top:12px"><div class="f">
@@ -238,7 +239,7 @@ function populateAndRender(){
   $("#tp").innerHTML=`<option value="">Selecione o template usado</option>`+opt(T,(t,i)=>`<option value="${i}">${t[0]}</option>`);
   $("#app").classList.remove("hid");updateContactTabs();render();
 }
-let activeStatus="";
+let activeStatus="",specialView="";
 const stOf=o=>(S[o.k]||{}).s||"novo";
 const tplOf=o=>{const v=$("#tp").value;return T[v===""?0:+v]};
 function filt(){
@@ -246,6 +247,7 @@ function filt(){
   const pe=$("#pe").checked,wz=$("#wz").checked;
   let r=D.filter(o=>{
     if(cat?o.l!==cat:!(o.g==="ok"||(pe&&o.g==="pend")))return false;
+    if(specialView==="opportunities"&&!["sim","talvez"].includes((S[o.k]||{}).interesse))return false;
     const statusFilter=activeStatus||st;
     if((cid&&o.cid!==cid)||(statusFilter&&stOf(o)!==statusFilter)||(wz&&!o.tel))return false;
     if(q&&!(norm(o.nome).includes(q)||(qd&&(o.tel.includes(qd)||o.cep.replace(/\D/g,"").includes(qd)))))return false;
@@ -290,7 +292,7 @@ async function mark(o,s,t){
 function render(){
   try{
     view=filt();
-    $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> clientes na lista`;
+    $("#cnt").innerHTML=`<b>${view.length.toLocaleString("pt-BR")}</b> ${specialView==="opportunities"?"oportunidades em aberto":"clientes na lista"}`;
     updateContactTabs();
     $("#rows").innerHTML=view.slice(0,shown).map((o,i)=>{
       const x=mAgo(o.c),ago=x===null?"":x<1?"há menos de 1 mês":x<24?`há ${Math.round(x)} meses`:`há ${(x/12).toFixed(1).replace(".",",")} anos`;
@@ -300,7 +302,7 @@ function render(){
         <td>${fd(o.c)}<small>${ago}</small></td>
         <td>${(S[o.k]||{}).d?fd(new Date((S[o.k]||{}).d)):"—"}<small>${(S[o.k]||{}).d?"Contato realizado":"Ainda não contatado"}</small></td>
         <td><span class="t ${o.g}">${esc(o.l)}</span><small title="${esc(o.obs)}">${esc((o.obs||"").split("\n")[0].slice(0,80))}</small></td>
-        <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}</select>${(S[o.k]||{}).proximo?`<small class="next-contact">Retomar em ${fd(new Date((S[o.k]||{}).proximo+"T00:00:00"))}</small>`:""}</td>
+        <td><select data-i="${i}" aria-label="Situação">${ST.map(([v,l])=>`<option value="${v}"${stOf(o)===v?" selected":""}>${l}</option>`).join("")}${["sim","talvez"].includes((S[o.k]||{}).interesse)?`<small><strong>Interesse:</strong> ${(S[o.k]||{}).interesse==="sim"?"Sim":"Talvez")}</small><small><strong>Retorno:</strong> ${esc(MOTIVO_LABEL[(S[o.k]||{}).motivo]||(S[o.k]||{}).motivo||"não informado")}</small><small><strong>Próxima ação:</strong> ${(S[o.k]||{}).interesse==="sim"?"Negociar agora":((S[o.k]||{}).proximo?"Retomar na data":"Definir follow-up")}</small>`:""}${(S[o.k]||{}).proximo?`<small class="next-contact">Retomar em ${fd(new Date((S[o.k]||{}).proximo+"T00:00:00"))}</small>`:""}</td>
         <td>
   <button type="button" class="b wa copy-name" data-i="${i}" title="Copiar nome para buscar no sistema">📋 Copiar nome</button>
   <select class="row-template" data-i="${i}" aria-label="Template usado no contato">
@@ -320,20 +322,22 @@ function render(){
   }
 }
 function updateContactTabs(){
-  const counts={todos:0,novo:0,contatado:0,respondeu:0,negociando:0,retornar:0,voltou:0,sem:0,semretorno:0,semcontato:0,debito:0};
-  D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++}); counts.todos=D.length;
+  const counts={todos:0,novo:0,contatado:0,respondeu:0,negociando:0,retornar:0,voltou:0,sem:0,semretorno:0,semcontato:0,debito:0,opportunities:0};
+  D.forEach(o=>{const s=stOf(o);if(counts[s]!==undefined)counts[s]++;if(["sim","talvez"].includes((S[o.k]||{}).interesse))counts.opportunities++}); counts.todos=D.length;
   Object.keys(counts).forEach(k=>{const el=document.querySelector('[data-count="'+k+'"]');if(el)el.textContent=counts[k].toLocaleString("pt-BR")});
-  document.querySelectorAll(".contact-tab").forEach(b=>b.classList.toggle("active",b.dataset.status===activeStatus));
+  document.querySelectorAll(".contact-tab").forEach(b=>{const mode=b.dataset.status;b.classList.toggle("active",mode===(specialView==="opportunities"?"__opportunities":activeStatus))});
 }
 document.querySelector("#contactTabs").addEventListener("click",e=>{
   const b=e.target.closest(".contact-tab");if(!b)return;
-  const isStats=b.dataset.status==="__stats";
+  const mode=b.dataset.status||"";
+  const isStats=mode==="__stats",isOpp=mode==="__opportunities";
   $("#workArea").classList.toggle("hid",isStats);
   $("#statsPanel").classList.toggle("hid",!isStats);
   document.querySelectorAll(".contact-tab").forEach(x=>x.classList.remove("active"));
   b.classList.add("active");
-  if(isStats){stats();return}
-  activeStatus=b.dataset.status||"";
+  if(isStats){specialView="";stats();return}
+  specialView=isOpp?"opportunities":"";
+  activeStatus=isOpp?"":mode;
   const st=$("#st");if(st)st.value=activeStatus;
   shown=PAGE;updateContactTabs();render();
 });
@@ -397,10 +401,13 @@ async function saveDetails(){
   const o=activeDetail;if(!o)return;
   const previous={...(S[o.k]||{})};
   const next={...previous,motivo:$("#detailMotivo").value||"",operadora:$("#detailOperadora").value.trim(),interesse:$("#detailInteresse").value||"",proximo:$("#detailProximo").value||"",obs:$("#detailObs").value.trim()};
+  if(next.interesse==="sim")next.s="negociando";
+  else if(next.interesse==="talvez")next.s="retornar";
+  else if(next.interesse==="nao")next.s="sem";
   S[o.k]=next;save();render();stats();
   try{
     if(window.sb&&o.dbid){
-      const {error}=await sb.from("clientes").update({motivo_resposta:next.motivo||null,operadora_atual:next.operadora||null,interesse:next.interesse||null,proximo_contato_em:next.proximo||null,observacao_interna:next.obs||null,atualizado_em:new Date().toISOString()}).eq("id",o.dbid);
+      const {error}=await sb.from("clientes").update({status_recuperacao:next.s,motivo_resposta:next.motivo||null,operadora_atual:next.operadora||null,interesse:next.interesse||null,proximo_contato_em:next.proximo||null,observacao_interna:next.obs||null,atualizado_em:new Date().toISOString()}).eq("id",o.dbid);
       if(error)throw error;
     }
     closeDetails();
@@ -434,7 +441,7 @@ $("#rows").addEventListener("change",async e=>{
   if(ok&&["respondeu","negociando","retornar","sem","voltou"].includes(status))openDetails(o);
 });
 ["q","cat","jan","cid","st","ord","tp","pe","wz"].forEach(id=>{
-  const el=$("#"+id);if(el)el.addEventListener(id==="q"?"input":"change",()=>{shown=PAGE;render()});
+  const el=$("#"+id);if(el)el.addEventListener(id==="q"?"input":"change",()=>{if(id==="st"&&specialView){specialView="";activeStatus=el.value||""}shown=PAGE;render()});
 });
 $("#more").onclick=()=>{shown+=PAGE;render()};
 $("#exp").onclick=()=>{
